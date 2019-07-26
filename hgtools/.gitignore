@@ -1,3 +1,7 @@
 /cq/
 /csp/
 /old/
+/target/
+/output/
+*.sql
+*.tpl
