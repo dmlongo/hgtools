@@ -3,21 +3,21 @@ package at.ac.tuwien.dbai.hgtools.hypergraph;
 import java.util.ArrayList;
 import java.util.List;
 
-import at.ac.tuwien.dbai.hgtools.Util.Util;
-import lombok.Data;
+import at.ac.tuwien.dbai.hgtools.util.Util;
 
-@Data
 public class Edge {
 	private String name;
-	private List<String> vertices;
+	/** Vertices are ordered in every edge. */
+	private ArrayList<String> vertices;
 
-	public Edge() {
+	public Edge(String name) {
+		this.name = name;
 		vertices = new ArrayList<String>(50);
 	}
 
 	public Edge(String name, String[] strings) {
 		this.name = name;
-		vertices = new ArrayList<String>(50);
+		vertices = new ArrayList<String>(strings.length);
 		for (String s : strings) {
 			vertices.add(s);
 		}
@@ -25,10 +25,6 @@ public class Edge {
 
 	public String getName() {
 		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
 	}
 
 	public boolean contains(String v) {
@@ -39,12 +35,22 @@ public class Edge {
 		vertices.add(v);
 	}
 
+	public void renameVertex(String v, String newName) {
+		int pos = vertices.indexOf(v);
+		vertices.set(pos, newName);
+	}
+
+	public List<String> getVertices() {
+		return vertices;
+	}
+
 	public String toString() {
 		String s = "";
 
 		s += Util.stringify(name) + "(";
-		for (String v : vertices)
+		for (String v : vertices) {
 			s += Util.stringify(v) + ",";
+		}
 		s = s.substring(0, s.length() - 1);
 		s += ")";
 

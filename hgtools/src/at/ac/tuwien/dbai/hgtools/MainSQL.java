@@ -6,12 +6,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Map;
 
-import at.ac.tuwien.dbai.hgtools.HypergraphFromSQL.BasePredicate;
-import at.ac.tuwien.dbai.hgtools.HypergraphFromSQL.HypergraphFromSQLFinder;
-import at.ac.tuwien.dbai.hgtools.HypergraphFromSQL.HypergraphFromSQLHelper;
-import at.ac.tuwien.dbai.hgtools.HypergraphFromSQL.SameColumn;
-import at.ac.tuwien.dbai.hgtools.HypergraphFromSQL.Schema;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
+import at.ac.tuwien.dbai.hgtools.sql2hg.BasePredicate;
+import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphFromSQLFinder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphFromSQLHelper;
+import at.ac.tuwien.dbai.hgtools.sql2hg.SameColumn;
+import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -40,7 +40,7 @@ public class MainSQL {
 			   BasePredicate p = new BasePredicate(tbl.getTable().getName());
 		       for (ColumnDefinition cdef : tbl.getColumnDefinitions()) {
 			      //System.out.println("+++ " + cdef.getColumnName());
-			      p.addLiteral(cdef.getColumnName());
+			      p.addAttribute(cdef.getColumnName());
 		       }
 		       schema.addPredicate(p);
 			}
@@ -75,7 +75,7 @@ public class MainSQL {
 			
 			    Select selectStmt = (Select)stmt;
 			    HypergraphFromSQLFinder hgFinder = new HypergraphFromSQLFinder();
-			    hgFinder.run(selectStmt);
+			    hgFinder.run(schema, selectStmt);
 			    Map<String,String> tableList = hgFinder.getAtomList();
 			
 			    for (String s : tableList.keySet()) {

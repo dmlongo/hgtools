@@ -1,4 +1,4 @@
-package at.ac.tuwien.dbai.hgtools.Util;
+package at.ac.tuwien.dbai.hgtools.util;
 
 public class Util {
 

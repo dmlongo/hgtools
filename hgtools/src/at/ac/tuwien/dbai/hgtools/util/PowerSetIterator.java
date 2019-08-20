@@ -1,4 +1,4 @@
-package at.ac.tuwien.dbai.hgtools.Util;
+package at.ac.tuwien.dbai.hgtools.util;
 
 import java.util.BitSet;
 import java.util.Collection;
