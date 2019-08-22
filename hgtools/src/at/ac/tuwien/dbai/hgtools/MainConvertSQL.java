@@ -6,12 +6,12 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
-import at.ac.tuwien.dbai.hgtools.sql2hg.BasePredicate;
-import at.ac.tuwien.dbai.hgtools.sql2hg.Equality;
-import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
-import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphFinder;
-import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateInQuery;
-import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.BasePredicate;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.Equality;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphBuilder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphFinder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.PredicateInQuery;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.Schema;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;

@@ -1,56 +1,90 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 
-public class AbstractPredicate implements Predicate, Iterable<String> {
+public abstract class AbstractPredicate implements Predicate {
 
-	protected String name;
-	protected HashSet<Attribute> attributes;
-	protected int numAttr;
+	protected PredicateDefinition definition;
+	protected String alias;
 
-	public AbstractPredicate(String name) {
-		this.name = name;
-		attributes = new HashSet<>();
-		numAttr = 0;
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public void addAttribute(String attr) {
-		if (attr == null) {
+	public AbstractPredicate(PredicateDefinition def, String alias) {
+		if (def == null || alias == null) {
 			throw new NullPointerException();
 		}
-		attributes.add(new Attribute(this, attr, numAttr++));
+		this.definition = def;
+		this.alias = alias;
+	}
+
+	public AbstractPredicate(PredicateDefinition def) {
+		this(def, "");
+	}
+
+	@Override
+	public PredicateDefinition getPredicateDefinition() {
+		return definition;
+	}
+
+	@Override
+	public String getPredicateName() {
+		return definition.getName();
+	}
+
+	@Override
+	public void setAlias(String alias) {
+		if (alias == null) {
+			throw new NullPointerException();
+		}
+		this.alias = alias;
+	}
+
+	@Override
+	public String getAlias() {
+		return alias.equals("") ? definition.getName() : alias;
+	}
+
+	@Override
+	public String getAttributeAlias(String attr) {
+		Iterator<String> originalIt = definition.iterator();
+		Iterator<String> aliasIt = iterator();
+		while (aliasIt.hasNext()) {
+			String originalAttr = originalIt.next();
+			String aliasAttr = aliasIt.next();
+			if (attr.equals(originalAttr)) {
+				return aliasAttr;
+			}
+		}
+		// TODO a null could be propagated if attr doesn't exist
+		return null;
+	}
+
+	@Override
+	public String getOriginalAttribute(String alias) {
+		Iterator<String> originalIt = definition.iterator();
+		Iterator<String> aliasIt = iterator();
+		while (aliasIt.hasNext()) {
+			String originalAttr = originalIt.next();
+			String aliasAttr = aliasIt.next();
+			if (alias.equals(aliasAttr)) {
+				return originalAttr;
+			}
+		}
+		// TODO a null could be propagated if alias doesn't exist
+		return null;
 	}
 
 	@Override
 	public boolean existsAttribute(String attr) {
-		return attributes.contains(new Attribute(null, attr, -1));
+		for (String thisAttr : this) {
+			if (attr.equals(thisAttr)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
 	public Iterator<String> iterator() {
-		List<String> ordered = orderAttributes();
-		return ordered.iterator();
-	}
-
-	protected List<String> orderAttributes() {
-		ArrayList<Attribute> entries = new ArrayList<>(attributes);
-		Collections.sort(entries);
-		// TODO rewrite it using lambda functions
-		ArrayList<String> ordered = new ArrayList<String>(entries.size());
-		for (Attribute attr : entries) {
-			ordered.add(attr.getName());
-		}
-		return ordered;
+		return new AliasedAttributesIterator();
 	}
 
 	@Override
@@ -67,42 +101,87 @@ public class AbstractPredicate implements Predicate, Iterable<String> {
 	public String getDefiningAttribute(String viewAttr) {
 		throw new UnsupportedOperationException();
 	}
+	
+	/**
+	 * 
+	 * Iterates over the attributes of the predicate definition, but uses attribute
+	 * aliases, if defined.
+	 * 
+	 * @author david
+	 *
+	 */
+	private class AliasedAttributesIterator implements Iterator<String> {
+
+		private Iterator<String> predIt = definition.iterator();
+
+		@Override
+		public boolean hasNext() {
+			return predIt.hasNext();
+		}
+
+		@Override
+		public String next() {
+			return getAttributeAlias(predIt.next());
+		}
+
+	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((attributes == null) ? 0 : attributes.hashCode());
-		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((alias == null) ? 0 : alias.hashCode());
+		result = prime * result + ((definition == null) ? 0 : definition.hashCode());
+		for (String attr : this) {
+			result = prime * result + attr.hashCode();
+		}
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (!(obj instanceof AbstractPredicate)) {
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
+		}
 		AbstractPredicate other = (AbstractPredicate) obj;
-		if (attributes == null) {
-			if (other.attributes != null)
+		if (alias == null) {
+			if (other.alias != null) {
 				return false;
-		} else if (!attributes.equals(other.attributes))
+			}
+		} else if (!alias.equals(other.alias)) {
 			return false;
-		if (name == null) {
-			if (other.name != null)
+		}
+		if (definition == null) {
+			if (other.definition != null) {
 				return false;
-		} else if (!name.equals(other.name))
+			}
+		} else if (!definition.equals(other.definition)) {
 			return false;
+		}
+
+		Iterator<String> thisIt = iterator();
+		Iterator<String> otherIt = other.iterator();
+		while (thisIt.hasNext()) {
+			if (!otherIt.hasNext()) {
+				return false;
+			}
+			String thisAttr = thisIt.next();
+			String otherAttr = otherIt.next();
+			if (!thisAttr.equals(otherAttr)) {
+				return false;
+			}
+		}
+
 		return true;
 	}
 
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(200);
-		sb.append(name);
+		sb.append(getAlias());
 		sb.append('(');
 		Iterator<String> it = iterator();
 		while (it.hasNext()) {
@@ -113,41 +192,6 @@ public class AbstractPredicate implements Predicate, Iterable<String> {
 		}
 		sb.append(')');
 		return sb.toString();
-	}
-
-	public static void main(String[] args) {
-		BasePredicate leaf1 = new BasePredicate("leaf1");
-		leaf1.addAttributes("attr1", "attr2", "attr3");
-		System.out.println(leaf1);
-		BasePredicate leaf2 = new BasePredicate("leaf2");
-		leaf2.addAttributes("col1", "col2");
-		System.out.println(leaf2);
-		BasePredicate leaf3 = new BasePredicate("leaf3");
-		leaf3.addAttributes("id", "name", "surname");
-		System.out.println(leaf3);
-
-		ViewPredicate view1 = new ViewPredicate("view1");
-		view1.addAttributes("alias1", "alias2", "alias3");
-		view1.addDefiningPredicates(leaf2, leaf3);
-		view1.defineAttribute("alias1", "leaf2", "col2");
-		view1.defineAttribute("alias2", "leaf3", "name");
-		view1.defineAttribute("alias3", "leaf2", "col1");
-		System.out.println(view1);
-
-		ViewPredicate view2 = new ViewPredicate("view2");
-		view2.addAttributes("vAttr1", "vAttr2", "vAttr3");
-		view2.addDefiningPredicates(leaf1, view1);
-		view2.defineAttribute("vAttr1", "leaf1", "attr2");
-		view2.defineAttribute("vAttr2", "view1", "alias2");
-		view2.defineAttribute("vAttr3", "view1", "alias1");
-		System.out.println(view2);
-
-		System.out.println();
-		System.out.println("Def of leaf3.surname: " + leaf3.getDefiningAttribute("surname"));
-		System.out.println("Def of view1.alias3: " + view1.getDefiningAttribute("alias3"));
-		System.out.println("Def of view2.vAttr1: " + view2.getDefiningAttribute("vAttr1"));
-		System.out.println("Def of view2.vAttr2: " + view2.getDefiningAttribute("vAttr2"));
-		System.out.println("Def of view2.vAttr3: " + view2.getDefiningAttribute("vAttr3"));
 	}
 
 }

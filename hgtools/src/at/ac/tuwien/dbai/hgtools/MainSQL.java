@@ -7,11 +7,11 @@ import java.io.IOException;
 import java.util.Map;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
-import at.ac.tuwien.dbai.hgtools.sql2hg.BasePredicate;
-import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphFromSQLFinder;
-import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphFromSQLHelper;
-import at.ac.tuwien.dbai.hgtools.sql2hg.SameColumn;
-import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.BasePredicate;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphFromSQLFinder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphFromSQLHelper;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.SameColumn;
+import at.ac.tuwien.dbai.hgtools.sql2hg.old.Schema;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;

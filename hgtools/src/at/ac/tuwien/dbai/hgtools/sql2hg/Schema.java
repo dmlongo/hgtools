@@ -3,32 +3,32 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public class Schema implements Iterable<Predicate> {
+public class Schema implements Iterable<PredicateDefinition> {
 
-	private HashMap<String, Predicate> predicates;
+	private HashMap<String, PredicateDefinition> definitions;
 
 	public Schema() {
-		predicates = new HashMap<>();
+		definitions = new HashMap<>();
 	}
 
-	public void addPredicate(Predicate pred) {
-		if (pred == null) {
+	public void addPredicateDefinition(PredicateDefinition predDef) {
+		if (predDef == null) {
 			throw new NullPointerException();
 		}
-		predicates.put(pred.getName(), pred);
+		definitions.put(predDef.getName(), predDef);
 	}
 	
-	public Predicate getPredicate(String pred) {
+	public PredicateDefinition getPredicateDefinition(String predDef) {
 		// TODO should I make sure I don't return null if pred doesn't exist?
-		return predicates.get(pred);
+		return definitions.get(predDef);
 	}
 	
-	public boolean existsPredicate(String pred) {
-		return predicates.containsKey(pred);
+	public boolean existsPredicateDefinition(String predDef) {
+		return definitions.containsKey(predDef);
 	}
 	
-	public boolean existsAttributeInPredicate(String attr, String pred) {
-		Predicate p = predicates.get(pred);
+	public boolean existsAttributeInPredicateDefinition(String attr, String predDef) {
+		PredicateDefinition p = definitions.get(predDef);
 		if (p != null) {
 			return p.existsAttribute(attr);
 		} else {
@@ -37,8 +37,8 @@ public class Schema implements Iterable<Predicate> {
 	}
 	
 	@Override
-	public Iterator<Predicate> iterator() {
-		return predicates.values().iterator();
+	public Iterator<PredicateDefinition> iterator() {
+		return definitions.values().iterator();
 	}
 
 }

@@ -1,17 +1,22 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-public class BasePredicate extends AbstractPredicate {
+public class BasePredicate extends SimplePredicate implements Predicate {
 
-	public BasePredicate(String name) {
-		super(name);
+	public BasePredicate(PredicateDefinition def, String alias) {
+		super(def, alias);
+	}
+
+	public BasePredicate(PredicateDefinition def) {
+		super(def);
 	}
 
 	@Override
 	public String getDefiningAttribute(String viewAttr) {
-		if (!attributes.contains(new Attribute(null, viewAttr, -1))) {
-			throw new IllegalArgumentException(name + "." + viewAttr + " does not exists.");
+		// TODO should I connect viewAttr (presumably aliased) to the original attribute?
+		if (!existsAttribute(viewAttr)) {
+			throw new IllegalArgumentException(alias + "." + viewAttr + " does not exists.");
 		}
-		return name + "." + viewAttr;
+		return alias + "." + viewAttr;
 	}
 
 }

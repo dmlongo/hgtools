@@ -12,7 +12,7 @@ public class Edge {
 
 	public Edge(String name) {
 		this.name = name;
-		vertices = new ArrayList<String>(50);
+		vertices = new ArrayList<String>(200);
 	}
 
 	public Edge(String name, String[] strings) {
