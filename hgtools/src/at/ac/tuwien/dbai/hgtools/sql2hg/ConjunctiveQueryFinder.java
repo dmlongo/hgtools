@@ -91,7 +91,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			this.name = name;
 			attr = new LinkedList<>();
 		}
-		
+
 		String name;
 		LinkedList<String> attr;
 		public PredicateDefinition def;
@@ -107,7 +107,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
-	
+
 	private ConjunctiveQuery currentCQ;
 	private LinkedList<ConjunctiveQuery> cqs;
 
@@ -125,7 +125,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 		tables = new HashSet<>();
 		joins = new HashSet<>();
-		
+
 		currentCQ = null;
 		cqs = new LinkedList<>();
 
@@ -143,7 +143,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	public HashSet<Equality> getJoins() {
 		return joins;
 	}
-	
+
 	public List<ConjunctiveQuery> getConjunctiveQueries() {
 		return cqs;
 	}
@@ -214,7 +214,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		}
 
 		// TODO at this point I can add equalities
-		
+
 		if (plainSelect.getOracleHierarchical() != null) {
 			plainSelect.getOracleHierarchical().accept(this);
 		}
@@ -223,8 +223,23 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private Column extractColumn(Expression expression) {
 		Expression expr = expression;
-		while (!(expr instanceof Column)) {
-			expr = ((Function) expr).getAttribute();
+		while (expr != null && !(expr instanceof Column)) {
+			String c = expr.getClass().getSimpleName();
+			switch (c) {
+			case "Function":
+				Function f = (Function) expr;
+				expr = null;
+				for (Expression e : f.getParameters().getExpressions()) {
+					if (e instanceof Column) {
+						expr = e;
+						break;
+					}
+				}
+				break;
+			default:
+				throw new AssertionError("Class " + c + " not supported.");
+			}
+
 		}
 		return ((Column) expr);
 	}
@@ -258,8 +273,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		// TODO what if I'm not coming from a FROM clause?
 		String tableWholeName = tableName.getFullyQualifiedName();
 		String tableAliasName = getTableAliasName(tableName);
-		//PredicateDefinition pred = schema.getPredicateDefinition(tableWholeName);
-		Predicate table = schema.newPredicate(tableWholeName);	// TODO problematic line
+		// PredicateDefinition pred = schema.getPredicateDefinition(tableWholeName);
+		Predicate table = schema.newPredicate(tableWholeName); // TODO problematic line
 		table.setAlias(tableAliasName);
 		// TODO column aliases must be dealt with here
 		nResolver.addTableToCurrentScope(table);

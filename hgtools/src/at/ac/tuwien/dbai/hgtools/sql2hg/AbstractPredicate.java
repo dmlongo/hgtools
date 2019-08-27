@@ -82,7 +82,7 @@ public abstract class AbstractPredicate implements Predicate {
 	@Override
 	public boolean existsAttribute(String attr) {
 		for (String thisAttr : this) {
-			if (attr.equals(thisAttr)) {
+			if (attr.equalsIgnoreCase(thisAttr)) {
 				return true;
 			}
 		}
