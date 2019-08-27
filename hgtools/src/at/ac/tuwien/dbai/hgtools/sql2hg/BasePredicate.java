@@ -10,6 +10,10 @@ public class BasePredicate extends SimplePredicate implements Predicate {
 		super(def);
 	}
 
+	public BasePredicate(BasePredicate pred) {
+		super(pred);
+	}
+	
 	@Override
 	public String getDefiningAttribute(String viewAttr) {
 		// TODO should I connect viewAttr (presumably aliased) to the original attribute?

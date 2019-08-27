@@ -4,14 +4,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.LinkedList;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.BasePredicate;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.Equality;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphBuilder;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.HypergraphFinder;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.PredicateInQuery;
-import at.ac.tuwien.dbai.hgtools.sql2hg.old.Schema;
+import at.ac.tuwien.dbai.hgtools.sql2hg.ConjunctiveQueryFinder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.Equality;
+import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
+import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
+import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
+import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
+import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -53,32 +55,41 @@ public class MainConvertSQL {
 				String sqlString = readFile(file.getPath());
 				Statement stmt = CCJSqlParserUtil.parse(sqlString);
 				Select selectStmt = (Select) stmt;
-				HypergraphFinder hgFinder = new HypergraphFinder(schema);
+				ConjunctiveQueryFinder hgFinder = new ConjunctiveQueryFinder(schema);
 				hgFinder.run(selectStmt);
 
 				HypergraphBuilder hgBuilder = new HypergraphBuilder();
-				for (PredicateInQuery table : hgFinder.getTables()) {
-					 System.out.println(table);
+				for (Predicate table : hgFinder.getTables()) {
+					System.out.println(table);
 					hgBuilder.buildEdge(table);
 				}
+				for (Predicate table : hgFinder.getTables()) {
+					if (table instanceof ViewPredicate) {
+						ViewPredicate view = (ViewPredicate) table;
+						System.out.println(view);
+						for (Equality join : view.getJoins()) {
+							System.out.println(join);
+							hgBuilder.buildViewJoin(view.getAlias(), join);
+						}
+					}
+				}
 				for (Equality join : hgFinder.getJoins()) {
-					 System.out.println(join);
+					System.out.println(join);
 					hgBuilder.buildJoin(join);
 				}
 				Hypergraph h = hgBuilder.getHypergraph();
 				System.out.println();
 				System.out.println(hgBuilder.getVarToColMapping());
+				System.out.println();
 				System.out.println(h);
 
 				/**
-				String newFile = file.getPath();
-				newFile = "output/" + newFile.substring(0, newFile.lastIndexOf(".")) + ".hg";
-				Path newFilePath = Paths.get(newFile);
-				Files.createDirectories(newFilePath.getParent());
-				if (!Files.exists(newFilePath))
-					Files.createFile(newFilePath);
-				Files.write(Paths.get(newFile), H.toFile(), Charset.forName("UTF-8"));
-				*/
+				 * String newFile = file.getPath(); newFile = "output/" + newFile.substring(0,
+				 * newFile.lastIndexOf(".")) + ".hg"; Path newFilePath = Paths.get(newFile);
+				 * Files.createDirectories(newFilePath.getParent()); if
+				 * (!Files.exists(newFilePath)) Files.createFile(newFilePath);
+				 * Files.write(Paths.get(newFile), H.toFile(), Charset.forName("UTF-8"));
+				 */
 			}
 		}
 	}
@@ -90,12 +101,13 @@ public class MainConvertSQL {
 				CreateTable tbl = (CreateTable) schemaStmt;
 
 				// System.out.println("Table: "+tbl.getTable().getName());
-				BasePredicate p = new BasePredicate(tbl.getTable().getName());
+				String predicateName = tbl.getTable().getName();
+				LinkedList<String> attributes = new LinkedList<>();
 				for (ColumnDefinition cdef : tbl.getColumnDefinitions()) {
 					// System.out.println("+++ " + cdef.getColumnName());
-					p.addAttribute(cdef.getColumnName());
+					attributes.add(cdef.getColumnName());
 				}
-				schema.addPredicate(p);
+				schema.addPredicateDefinition(new PredicateDefinition(predicateName, attributes));
 			} catch (ClassCastException c) {
 				System.err.println("\"" + schemaStmt + "\" is not a CREATE statement.");
 			}
