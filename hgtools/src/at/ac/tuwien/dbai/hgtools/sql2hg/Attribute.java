@@ -9,14 +9,21 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
  * @author david
  *
  */
-public class Attribute implements Comparable<Attribute> {
-	
-	private String name;
-	private int position;
+public final class Attribute implements Comparable<Attribute> {
+
+	private final String name;
+	private final int position;
 
 	public Attribute(String name, int pos) {
+		if (name == null || pos < 0) {
+			throw new IllegalArgumentException();
+		}
 		this.name = name;
 		this.position = pos;
+	}
+
+	public Attribute(String name) {
+		this(name, Integer.MAX_VALUE);
 	}
 
 	public String getName() {
@@ -49,19 +56,12 @@ public class Attribute implements Comparable<Attribute> {
 			return false;
 		}
 		Attribute other = (Attribute) obj;
-		if (name == null) {
-			if (other.name != null) {
-				return false;
-			}
-		} else if (!name.equalsIgnoreCase(other.name)) {
-			return false;
-		}
-		return true;
+		return name.equalsIgnoreCase(other.name);
 	}
 
 	@Override
 	public String toString() {
 		return name;
 	}
-	
+
 }

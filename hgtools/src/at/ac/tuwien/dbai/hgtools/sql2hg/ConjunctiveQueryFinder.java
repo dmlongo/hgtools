@@ -100,15 +100,15 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private ViewInfo currentViewInfo;
 
-	private LinkedList<ViewInfo> viewDefs;
-	private PredicateDefinition currentViewDef;
+	// private LinkedList<ViewInfo> viewDefs;
+	// private PredicateDefinition currentViewDef;
 	// private ViewPredicate currentView;
 	private LinkedList<SelectExpressionItem> selExprItBuffer;
 
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
 
-	private ConjunctiveQuery currentCQ;
+	// private ConjunctiveQuery currentCQ;
 	private LinkedList<ConjunctiveQuery> cqs;
 
 	public ConjunctiveQueryFinder(Schema schema) {
@@ -119,14 +119,14 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		nResolver = new NameResolver();
 
 		currentViewInfo = null;
-		viewDefs = new LinkedList<>();
+		// viewDefs = new LinkedList<>();
 		// currentView = null;
 		selExprItBuffer = new LinkedList<>();
 
 		tables = new HashSet<>();
 		joins = new HashSet<>();
 
-		currentCQ = null;
+		// currentCQ = null;
 		cqs = new LinkedList<>();
 
 		currentState = ParsingState.Waiting;

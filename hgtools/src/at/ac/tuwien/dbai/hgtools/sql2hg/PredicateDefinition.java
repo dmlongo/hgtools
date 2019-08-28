@@ -3,38 +3,38 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
 public class PredicateDefinition implements Iterable<String> {
 
 	private String name;
-	private HashSet<Attribute> attributes;
+	private HashMap<Attribute, Attribute> attributes;
 
 	public PredicateDefinition(String name, Collection<String> attributes) {
 		if (name == null) {
 			throw new NullPointerException();
 		}
 		this.name = name;
-		this.attributes = new HashSet<>();
+		this.attributes = new HashMap<>();
 		int pos = 0;
 		for (String attrName : attributes) {
 			Attribute attr = new Attribute(attrName, pos++);
-			this.attributes.add(attr);
+			this.attributes.put(attr, attr);
 		}
 	}
-	
+
 	public PredicateDefinition(String name, String[] attributes) {
 		if (name == null) {
 			throw new NullPointerException();
 		}
 		this.name = name;
-		this.attributes = new HashSet<>();
+		this.attributes = new HashMap<>();
 		int pos = 0;
 		for (String attrName : attributes) {
 			Attribute attr = new Attribute(attrName, pos++);
-			this.attributes.add(attr);
+			this.attributes.put(attr, attr);
 		}
 	}
 
@@ -47,7 +47,16 @@ public class PredicateDefinition implements Iterable<String> {
 	}
 
 	public boolean existsAttribute(String attr) {
-		return attributes.contains(new Attribute(attr, -1));
+		return attributes.containsKey(new Attribute(attr));
+	}
+
+	public Attribute getAttribute(String attr) {
+		// TODO returns null if attr doesn't exist
+		return attributes.get(new Attribute(attr));
+	}
+	
+	public int getPosition(String attr) {
+		return attributes.get(new Attribute(attr)).getPosition();
 	}
 
 	@Override
@@ -57,7 +66,7 @@ public class PredicateDefinition implements Iterable<String> {
 	}
 
 	private List<String> orderAttributes() {
-		ArrayList<Attribute> entries = new ArrayList<>(attributes);
+		ArrayList<Attribute> entries = new ArrayList<>(attributes.keySet());
 		Collections.sort(entries);
 		// TODO rewrite it using lambda functions
 		ArrayList<String> ordered = new ArrayList<String>(entries.size());
@@ -71,8 +80,8 @@ public class PredicateDefinition implements Iterable<String> {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((attributes == null) ? 0 : attributes.hashCode());
-		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((name == null) ? 0 : name.toLowerCase().hashCode());
+		result = prime * result + ((attributes == null) ? 0 : attributes.keySet().hashCode());
 		return result;
 	}
 
@@ -85,19 +94,16 @@ public class PredicateDefinition implements Iterable<String> {
 			return false;
 		}
 		PredicateDefinition other = (PredicateDefinition) obj;
-		if (attributes == null) {
-			if (other.attributes != null) {
-				return false;
-			}
-		} else if (!attributes.equals(other.attributes)) {
+		if (!name.equalsIgnoreCase(other.name)) {
 			return false;
 		}
-		if (name == null) {
-			if (other.name != null) {
+		if (attributes.size() != other.attributes.size()) {
+			return false;
+		}
+		for (Attribute attr : attributes.keySet()) {
+			if (!other.attributes.containsKey(attr)) {
 				return false;
 			}
-		} else if (!name.equals(other.name)) {
-			return false;
 		}
 		return true;
 	}

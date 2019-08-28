@@ -109,5 +109,5 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 		// TODO aliasing
 		return joins;
 	}
-	
+
 }
