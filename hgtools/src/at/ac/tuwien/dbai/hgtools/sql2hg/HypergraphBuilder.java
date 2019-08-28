@@ -92,7 +92,7 @@ public class HypergraphBuilder {
 	}
 	
 	public Hypergraph getHypergraph() {
-		System.out.println(vars);
+		// System.out.println(vars);
 		for (Edge e : h.getEdges()) {
 			for (String v : e.getVertices()) {
 				String newName = vars.find(v);

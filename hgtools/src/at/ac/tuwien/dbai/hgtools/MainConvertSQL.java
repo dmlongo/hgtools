@@ -60,25 +60,25 @@ public class MainConvertSQL {
 
 				HypergraphBuilder hgBuilder = new HypergraphBuilder();
 				for (Predicate table : hgFinder.getTables()) {
-					System.out.println(table);
+					// System.out.println(table);
 					hgBuilder.buildEdge(table);
 				}
 				for (Predicate table : hgFinder.getTables()) {
 					if (table instanceof ViewPredicate) {
 						ViewPredicate view = (ViewPredicate) table;
-						System.out.println(view);
+						// System.out.println(view);
 						for (Equality join : view.getJoins()) {
-							System.out.println(join);
+							// System.out.println(join);
 							hgBuilder.buildViewJoin(view.getAlias(), join);
 						}
 					}
 				}
 				for (Equality join : hgFinder.getJoins()) {
-					System.out.println(join);
+					// System.out.println(join);
 					hgBuilder.buildJoin(join);
 				}
 				Hypergraph h = hgBuilder.getHypergraph();
-				System.out.println();
+				// System.out.println();
 				System.out.println(hgBuilder.getVarToColMapping());
 				System.out.println();
 				System.out.println(h);
