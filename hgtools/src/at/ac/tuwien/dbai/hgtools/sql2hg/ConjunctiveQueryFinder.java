@@ -16,6 +16,7 @@ import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimeValue;
 import net.sf.jsqlparser.expression.TimestampValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.relational.Between;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
@@ -383,6 +384,10 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	@Override
 	public void visit(NotEqualsTo notEqualsTo) {
+	}
+
+	@Override
+	public void visit(Between between) {
 	}
 
 	@Override

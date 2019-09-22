@@ -6,6 +6,8 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
  * 
  * the methods do not consider the predicate they belong to.
  * 
+ * invariant: an attribute has a lower case name.
+ * 
  * @author david
  *
  */
@@ -18,7 +20,7 @@ public final class Attribute implements Comparable<Attribute> {
 		if (name == null || pos < 0) {
 			throw new IllegalArgumentException();
 		}
-		this.name = name;
+		this.name = name.toLowerCase();
 		this.position = pos;
 	}
 
@@ -43,7 +45,7 @@ public final class Attribute implements Comparable<Attribute> {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((name == null) ? 0 : name.toLowerCase().hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
 		return result;
 	}
 
@@ -56,7 +58,7 @@ public final class Attribute implements Comparable<Attribute> {
 			return false;
 		}
 		Attribute other = (Attribute) obj;
-		return name.equalsIgnoreCase(other.name);
+		return name.equals(other.name);
 	}
 
 	@Override

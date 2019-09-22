@@ -5,3 +5,4 @@
 /output/
 *.sql
 *.tpl
+/data-alex_natural_join/

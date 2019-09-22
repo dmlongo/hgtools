@@ -7,6 +7,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * 
+ * invariant: a predicate definition has a lower case name.
+ * 
+ * @author david
+ *
+ */
 public class PredicateDefinition implements Iterable<String> {
 
 	private String name;
@@ -16,7 +23,7 @@ public class PredicateDefinition implements Iterable<String> {
 		if (name == null) {
 			throw new NullPointerException();
 		}
-		this.name = name;
+		this.name = name.toLowerCase();
 		this.attributes = new HashMap<>();
 		int pos = 0;
 		for (String attrName : attributes) {
@@ -29,7 +36,7 @@ public class PredicateDefinition implements Iterable<String> {
 		if (name == null) {
 			throw new NullPointerException();
 		}
-		this.name = name;
+		this.name = name.toLowerCase();
 		this.attributes = new HashMap<>();
 		int pos = 0;
 		for (String attrName : attributes) {
@@ -54,7 +61,7 @@ public class PredicateDefinition implements Iterable<String> {
 		// TODO returns null if attr doesn't exist
 		return attributes.get(new Attribute(attr));
 	}
-	
+
 	public int getPosition(String attr) {
 		return attributes.get(new Attribute(attr)).getPosition();
 	}
@@ -80,7 +87,7 @@ public class PredicateDefinition implements Iterable<String> {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((name == null) ? 0 : name.toLowerCase().hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
 		result = prime * result + ((attributes == null) ? 0 : attributes.keySet().hashCode());
 		return result;
 	}
@@ -94,7 +101,7 @@ public class PredicateDefinition implements Iterable<String> {
 			return false;
 		}
 		PredicateDefinition other = (PredicateDefinition) obj;
-		if (!name.equalsIgnoreCase(other.name)) {
+		if (!name.equals(other.name)) {
 			return false;
 		}
 		if (attributes.size() != other.attributes.size()) {
