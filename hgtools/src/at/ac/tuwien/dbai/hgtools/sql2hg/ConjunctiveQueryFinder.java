@@ -1,5 +1,6 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -196,6 +197,9 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		if (plainSelect.getJoins() != null) {
 			for (Join join : plainSelect.getJoins()) {
 				join.getRightItem().accept(this);
+				if (join.isNatural()) {
+					findEqualities(join);
+				}
 			}
 		}
 
@@ -220,6 +224,27 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			plainSelect.getOracleHierarchical().accept(this);
 		}
 		nResolver.exitCurrentScope();
+	}
+
+	private void findEqualities(Join join) {
+		Table joinTable = (Table) join.getRightItem();
+		Predicate joinPredicate = nResolver.resolveTableName(getTableAliasName(joinTable));
+		for (Predicate p : nResolver.getPredicatesInCurrentScope()) {
+			for (Equality eq : findCommonColumns(joinPredicate, p)) {
+				joins.add(eq);
+			}
+		}
+	}
+
+	private ArrayList<Equality> findCommonColumns(Predicate p1, Predicate p2) {
+		ArrayList<Equality> joins = new ArrayList<>(p1.arity());
+		for (String attr : p1) {
+			if (p2.existsAttribute(attr)) {
+				Equality eq = new Equality(p1, attr, p2, attr);
+				joins.add(eq);
+			}
+		}
+		return joins;
 	}
 
 	private Column extractColumn(Expression expression) {

@@ -53,6 +53,11 @@ public class SimplePredicate implements Predicate {
 	}
 
 	@Override
+	public int arity() {
+		return definition.arity();
+	}
+
+	@Override
 	public void setAlias(String alias) {
 		if (alias == null) {
 			throw new NullPointerException();
