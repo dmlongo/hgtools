@@ -4,14 +4,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.DateValue;
 import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NotExpression;
 import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimeValue;
@@ -20,8 +22,11 @@ import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.Between;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
@@ -49,17 +54,19 @@ import net.sf.jsqlparser.statement.update.Update;
 public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private static enum ClauseType {
-		ColumnOpColumn, ColumnOpConstant, Other;
+		COLUMN_OP_COLUMN, COLUMN_OP_CONSTANT, COLUMN_OP_SUBSELECT, OTHER;
 
 		public static ClauseType determineClauseType(ComparisonOperator op) {
 			Expression left = op.getLeftExpression();
 			Expression right = op.getRightExpression();
 			if (left instanceof Column && right instanceof Column) {
-				return ColumnOpColumn;
+				return COLUMN_OP_COLUMN;
 			} else if (left instanceof Column && isConstantValue(right)) {
-				return ColumnOpConstant;
+				return COLUMN_OP_CONSTANT;
+			} else if (left instanceof Column && right instanceof SubSelect) {
+				return COLUMN_OP_SUBSELECT;
 			} else {
-				return Other;
+				return OTHER;
 			}
 		}
 
@@ -80,7 +87,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	}
 
 	private static enum ParsingState {
-		Waiting, ReadingView, InSelect, Finished
+		WAITING, READING_VIEW, IN_SELECT, FINISHED
 	}
 
 	private ParsingState currentState;
@@ -105,7 +112,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	// private LinkedList<ViewInfo> viewDefs;
 	// private PredicateDefinition currentViewDef;
 	// private ViewPredicate currentView;
-	private LinkedList<SelectExpressionItem> selExprItBuffer;
+	private ArrayList<SelectExpressionItem> selExprItBuffer;
+	private ArrayList<Alias> aliasesBuffer;
 
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
@@ -123,7 +131,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		currentViewInfo = null;
 		// viewDefs = new LinkedList<>();
 		// currentView = null;
-		selExprItBuffer = new LinkedList<>();
+		selExprItBuffer = new ArrayList<>(17);
+		aliasesBuffer = new ArrayList<>(17);
 
 		tables = new HashSet<>();
 		joins = new HashSet<>();
@@ -131,7 +140,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		// currentCQ = null;
 		cqs = new LinkedList<>();
 
-		currentState = ParsingState.Waiting;
+		currentState = ParsingState.WAITING;
 	}
 
 	public void run(Statement statement) {
@@ -156,8 +165,12 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	public void visit(WithItem withItem) {
 		currentViewInfo = new ViewInfo(withItem.getName());
 		if (withItem.getWithItemList() != null) {
-			// TODO these items should just be names for the columns of the view
-			throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+			for (SelectItem item : withItem.getWithItemList()) {
+				aliasesBuffer.add(new Alias(item.toString()));
+				// item.accept(this);
+				// TODO these items should just be names for the columns of the view
+				// throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+			}
 		}
 		withItem.getSelectBody().accept(this);
 		schema.addPredicateDefinition(currentViewInfo.def, currentViewInfo.pred);
@@ -174,7 +187,13 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			}
 		}
 
-		if (currentState == ParsingState.ReadingView) {
+		if (currentState == ParsingState.READING_VIEW) {
+			for (int i = 0; i < aliasesBuffer.size(); i++) {
+				SelectExpressionItem item = selExprItBuffer.get(i);
+				Alias alias = aliasesBuffer.get(i);
+				item.setAlias(alias);
+			}
+			aliasesBuffer.clear();
 			for (SelectExpressionItem item : selExprItBuffer) {
 				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
 				if (viewAttr != null) {
@@ -199,11 +218,13 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 				join.getRightItem().accept(this);
 				if (join.isNatural()) {
 					findEqualities(join);
+				} else if (join.getOnExpression() != null) {
+					join.getOnExpression().accept(this);
 				}
 			}
 		}
 
-		if (currentState == ParsingState.ReadingView) {
+		if (currentState == ParsingState.READING_VIEW) {
 			for (SelectExpressionItem item : selExprItBuffer) {
 				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
 				Column col = extractColumn(item.getExpression());
@@ -248,26 +269,9 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	}
 
 	private Column extractColumn(Expression expression) {
-		Expression expr = expression;
-		while (expr != null && !(expr instanceof Column)) {
-			String c = expr.getClass().getSimpleName();
-			switch (c) {
-			case "Function":
-				Function f = (Function) expr;
-				expr = null;
-				for (Expression e : f.getParameters().getExpressions()) {
-					if (e instanceof Column) {
-						expr = e;
-						break;
-					}
-				}
-				break;
-			default:
-				throw new AssertionError("Class " + c + " not supported.");
-			}
-
-		}
-		return ((Column) expr);
+		ColumnFinder cf = new ColumnFinder();
+		Set<Column> cols = cf.getColumns(expression);
+		return cols.iterator().next();
 	}
 
 	// SelectItemVisitor
@@ -282,7 +286,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	@Override
 	public void visit(SelectExpressionItem item) {
-		selExprItBuffer.addLast(item);
+		selExprItBuffer.add(item);
 		/*
 		 * item.getExpression().accept(this); if (currentView != null &&
 		 * viewColumnMap[0] != null) { if (item.getAlias() != null) { viewColumnMap[1] =
@@ -305,10 +309,10 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		// TODO column aliases must be dealt with here
 		nResolver.addTableToCurrentScope(table);
 		switch (currentState) {
-		case ReadingView:
+		case READING_VIEW:
 			currentViewInfo.pred.addDefiningPredicate(table);
 			break;
-		case InSelect:
+		case IN_SELECT:
 			tables.add(table);
 			break;
 		default:
@@ -361,7 +365,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	public void visit(EqualsTo equalsTo) {
 		ClauseType ct = ClauseType.determineClauseType(equalsTo);
 		switch (ct) {
-		case ColumnOpColumn:
+		case COLUMN_OP_COLUMN:
 			Column left = (Column) equalsTo.getLeftExpression();
 			Column right = (Column) equalsTo.getRightExpression();
 			Predicate pred1 = nResolver.resolveColumn(left);
@@ -369,10 +373,10 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			String leftColumn = left.getColumnName();
 			String rightColumn = right.getColumnName();
 			switch (currentState) {
-			case ReadingView:
+			case READING_VIEW:
 				currentViewInfo.pred.addJoin(pred1.getAlias(), leftColumn, pred2.getAlias(), rightColumn);
 				break;
-			case InSelect:
+			case IN_SELECT:
 				Equality eq = new Equality(pred1, leftColumn, pred2, rightColumn);
 				joins.add(eq);
 				break;
@@ -381,9 +385,12 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			}
 			// TODO it mustn't be done if I'm building a view
 			break;
-		case ColumnOpConstant:
+		case COLUMN_OP_CONSTANT:
 			break;
-		case Other:
+		case COLUMN_OP_SUBSELECT:
+			// TODO maybe do something
+			break;
+		case OTHER:
 			super.visit(equalsTo);
 			break;
 		default:
@@ -416,6 +423,10 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	}
 
 	@Override
+	public void visit(LikeExpression likeExpression) {
+	}
+
+	@Override
 	public void visit(AndExpression andExpression) {
 		visitBinaryExpression(andExpression);
 	}
@@ -425,20 +436,32 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		binaryExpression.getRightExpression().accept(this);
 	}
 
+	@Override
+	public void visit(NotExpression aThis) {
+	}
+
+	@Override
+	public void visit(ExistsExpression existsExpression) {
+	}
+
+	@Override
+	public void visit(InExpression inExpression) {
+	}
+
 	// StatementVisitor
 
 	@Override
 	public void visit(Select select) {
 		if (select.getWithItemsList() != null) {
-			currentState = ParsingState.ReadingView;
+			currentState = ParsingState.READING_VIEW;
 			for (WithItem withItem : select.getWithItemsList()) {
 				withItem.accept(this);
 			}
-			currentState = ParsingState.Waiting;
+			currentState = ParsingState.WAITING;
 		}
-		currentState = ParsingState.InSelect;
+		currentState = ParsingState.IN_SELECT;
 		select.getSelectBody().accept(this);
-		currentState = ParsingState.Finished;
+		currentState = ParsingState.FINISHED;
 	}
 
 	@Override

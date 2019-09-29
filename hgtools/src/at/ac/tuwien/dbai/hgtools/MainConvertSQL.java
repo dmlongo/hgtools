@@ -4,7 +4,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ConjunctiveQueryFinder;
@@ -78,20 +86,45 @@ public class MainConvertSQL {
 					hgBuilder.buildJoin(join);
 				}
 				Hypergraph h = hgBuilder.getHypergraph();
+				HashMap<String, List<String>> map = hgBuilder.getVarToColMapping();
 				// System.out.println();
-				System.out.println(hgBuilder.getVarToColMapping());
+				System.out.println(map);
 				System.out.println();
 				System.out.println(h);
 
-				/**
-				 * String newFile = file.getPath(); newFile = "output/" + newFile.substring(0,
-				 * newFile.lastIndexOf(".")) + ".hg"; Path newFilePath = Paths.get(newFile);
-				 * Files.createDirectories(newFilePath.getParent()); if
-				 * (!Files.exists(newFilePath)) Files.createFile(newFilePath);
-				 * Files.write(Paths.get(newFile), H.toFile(), Charset.forName("UTF-8"));
-				 */
+				String newFile = file.getPath();
+				String fileBaseName = newFile.substring(0, newFile.lastIndexOf("."));
+				newFile = "output/" + fileBaseName + ".hg";
+				String newFileMap = "output/" + fileBaseName + ".map";
+				Path newFilePath = Paths.get(newFile);
+				Path newFileMapPath = Paths.get(newFileMap);
+				Files.createDirectories(newFilePath.getParent());
+				if (!Files.exists(newFilePath))
+					Files.createFile(newFilePath);
+				if (!Files.exists(newFileMapPath))
+					Files.createFile(newFileMapPath);
+				Files.write(Paths.get(newFile), h.toFile(), Charset.forName("UTF-8"));
+				Files.write(Paths.get(newFileMap), toFile(map), Charset.forName("UTF-8"));
 			}
 		}
+	}
+
+	private static List<String> toFile(HashMap<String, List<String>> map) {
+		ArrayList<String> lines = new ArrayList<>(map.size());
+		for (String var : map.keySet()) {
+			StringBuilder sb = new StringBuilder(100);
+			sb.append(var);
+			sb.append('=');
+			Iterator<String> it = map.get(var).iterator();
+			while (it.hasNext()) {
+				sb.append(it.next());
+				if (it.hasNext()) {
+					sb.append(',');
+				}
+			}
+			lines.add(sb.toString());
+		}
+		return lines;
 	}
 
 	private static void readPredicateDefinitions(String schemaString, Schema schema) throws JSQLParserException {
