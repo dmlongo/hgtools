@@ -62,6 +62,10 @@ public class PredicateDefinition implements Iterable<String> {
 		return attributes.get(new Attribute(attr));
 	}
 
+	public List<String> getAttributes() {
+		return orderAttributes();
+	}
+	
 	public int getPosition(String attr) {
 		return attributes.get(new Attribute(attr)).getPosition();
 	}

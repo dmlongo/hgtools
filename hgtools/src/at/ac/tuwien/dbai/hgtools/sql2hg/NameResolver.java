@@ -3,7 +3,6 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 
 import net.sf.jsqlparser.schema.Column;
@@ -27,11 +26,11 @@ public class NameResolver {
 	public void addTableToCurrentScope(Predicate table) {
 		scopes.getFirst().put(table.getAlias(), table);
 	}
-	
+
 	public Collection<Predicate> getPredicatesInCurrentScope() {
 		return scopes.getFirst().values();
 	}
-	
+
 	public Predicate resolveColumn(Column column) {
 		Predicate res = null;
 		if (column.getTable() != null) {
@@ -55,10 +54,8 @@ public class NameResolver {
 	}
 
 	public Predicate resolveTableName(String table) {
-		Iterator<HashMap<String, Predicate>> scopesIt = scopes.descendingIterator();
-		while (scopesIt.hasNext()) {
-			HashMap<String, Predicate> sc = scopesIt.next();
-			Predicate res = sc.get(table);
+		for (HashMap<String, Predicate> scope : scopes) {
+			Predicate res = scope.get(table);
 			if (res != null) {
 				return res;
 			}
@@ -67,10 +64,8 @@ public class NameResolver {
 	}
 
 	private Predicate findTableOf(String column) {
-		Iterator<HashMap<String, Predicate>> scopesIt = scopes.descendingIterator();
-		while (scopesIt.hasNext()) {
-			HashMap<String, Predicate> sc = scopesIt.next();
-			for (Predicate pred : sc.values()) {
+		for (HashMap<String, Predicate> scope : scopes) {
+			for (Predicate pred : scope.values()) {
 				if (pred.existsAttribute(column)) {
 					return pred;
 				}

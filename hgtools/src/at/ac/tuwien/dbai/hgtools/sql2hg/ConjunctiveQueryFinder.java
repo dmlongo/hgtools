@@ -15,10 +15,12 @@ import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NotExpression;
 import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimeValue;
 import net.sf.jsqlparser.expression.TimestampValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.Between;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
@@ -143,6 +145,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		currentState = ParsingState.WAITING;
 	}
 
+	// TODO can be called only once, otherwise reset the state
 	public void run(Statement statement) {
 		statement.accept(this);
 	}
@@ -430,14 +433,24 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	public void visit(AndExpression andExpression) {
 		visitBinaryExpression(andExpression);
 	}
-
+	
+	@Override
+	public void visit(OrExpression orExpression) {
+		// TODO maybe do something more complicated
+	}
+	
+	@Override
+	public void visit(NotExpression aThis) {
+	}
+	
 	public void visitBinaryExpression(BinaryExpression binaryExpression) {
 		binaryExpression.getLeftExpression().accept(this);
 		binaryExpression.getRightExpression().accept(this);
 	}
 
 	@Override
-	public void visit(NotExpression aThis) {
+	public void visit(Parenthesis parenthesis) {
+		parenthesis.getExpression().accept(this);
 	}
 
 	@Override
