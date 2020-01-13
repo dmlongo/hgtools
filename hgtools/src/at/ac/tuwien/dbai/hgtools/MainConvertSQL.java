@@ -1,8 +1,6 @@
 package at.ac.tuwien.dbai.hgtools;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -11,7 +9,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
@@ -19,23 +16,20 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.ConjunctiveQueryFinder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Equality;
 import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
-import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
+import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.Statements;
-import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 
 public class MainConvertSQL {
 
 	public static void main(String[] args) throws JSQLParserException, IOException {
 		Schema schema = new Schema();
-		String schemaString = readFile(args[0]);
-		readPredicateDefinitions(schemaString, schema);
+		String schemaString = Util.readSQLFile(args[0]);
+		Util.readSQLPredicateDefinitions(schemaString, schema);
 
 		for (int i = 1; i < args.length; i++) {
 			File file = new File(args[i]);
@@ -55,12 +49,8 @@ public class MainConvertSQL {
 			if (file.isDirectory()) {
 				// System.out.println("Directory: " + file.getName());
 				processFiles(file.listFiles(), schema); // Calls same method again.
-			} else if (file.getName().endsWith("sql") || file.getName().endsWith("tpl")) {
-				/*
-				 * TODO create a regex containing all possible extensions and then check if the
-				 * name matches it
-				 */
-				String sqlString = readFile(file.getPath());
+			} else if (Util.isSQLFile(file.getName())) {
+				String sqlString = Util.readSQLFile(file.getPath());
 				Statement stmt = CCJSqlParserUtil.parse(sqlString);
 				Select selectStmt = (Select) stmt;
 				ConjunctiveQueryFinder hgFinder = new ConjunctiveQueryFinder(schema);
@@ -125,40 +115,6 @@ public class MainConvertSQL {
 			lines.add(sb.toString());
 		}
 		return lines;
-	}
-
-	private static void readPredicateDefinitions(String schemaString, Schema schema) throws JSQLParserException {
-		Statements schemaStmts = CCJSqlParserUtil.parseStatements(schemaString);
-		for (Statement schemaStmt : schemaStmts.getStatements()) {
-			try {
-				CreateTable tbl = (CreateTable) schemaStmt;
-
-				// System.out.println("Table: "+tbl.getTable().getName());
-				String predicateName = tbl.getTable().getName();
-				LinkedList<String> attributes = new LinkedList<>();
-				for (ColumnDefinition cdef : tbl.getColumnDefinitions()) {
-					// System.out.println("+++ " + cdef.getColumnName());
-					attributes.add(cdef.getColumnName());
-				}
-				schema.addPredicateDefinition(new PredicateDefinition(predicateName, attributes));
-			} catch (ClassCastException c) {
-				System.err.println("\"" + schemaStmt + "\" is not a CREATE statement.");
-			}
-		}
-	}
-
-	public static String readFile(String fName) {
-		String s = "";
-		try (BufferedReader br = new BufferedReader(new FileReader(fName))) {
-			String sCurrentLine;
-			while ((sCurrentLine = br.readLine()) != null) {
-				if (!sCurrentLine.startsWith("--"))
-					s += sCurrentLine + " ";
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return s;
 	}
 
 }

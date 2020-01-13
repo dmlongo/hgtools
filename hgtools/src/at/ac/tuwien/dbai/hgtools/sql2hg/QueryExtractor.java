@@ -38,7 +38,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private static class NameStack {
 		private LinkedList<HashSet<String>> scopes;
 		private LinkedList<SelectBody> selects;
-		private LinkedList<LinkedList<FromItem>> tables;
+		private LinkedList<LinkedList<Table>> tables;
 
 		public NameStack() {
 			scopes = new LinkedList<>();
@@ -62,11 +62,11 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			tables.removeFirst();
 		}
 
-		public void addTableToCurrentScope(FromItem table) {
+		public void addTableToCurrentScope(Table table) {
 			tables.getFirst().add(table);
 		}
 
-		public LinkedList<FromItem> getCurrentTables() {
+		public LinkedList<Table> getCurrentTables() {
 			return tables.getFirst();
 		}
 
@@ -210,14 +210,13 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	@Override
 	public void visit(PlainSelect plainSelect) {
 		if (plainSelect.getFromItem() != null) {
-			// TODO wrong! FromItem is only the first object (table/subquery)
-			resolver.addTableToCurrentScope(plainSelect.getFromItem());
+			resolver.addTableToCurrentScope((Table) plainSelect.getFromItem());
 			plainSelect.getFromItem().accept(this);
 		}
 
 		if (plainSelect.getJoins() != null) {
-			// TODO I should add also the joins to the current tables
 			for (Join join : plainSelect.getJoins()) {
+				resolver.addTableToCurrentScope((Table) join.getRightItem());
 				join.getRightItem().accept(this);
 				if (join.getOnExpression() != null) {
 					join.getOnExpression().accept(exprVisitor);
@@ -278,7 +277,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		if (item.getAlias() != null) {
 			resolver.addNameToParentScope(item.getAlias().getName());
 		} else if (item.getExpression() instanceof Column) {
-			// TODO do I enter here if I have an alias bu I'm also a Column?
+			// TODO do I enter here if I have an alias but I'm also a Column?
 			Column col = (Column) item.getExpression();
 			resolver.addNameToParentScope(col.getColumnName());
 		} else {
