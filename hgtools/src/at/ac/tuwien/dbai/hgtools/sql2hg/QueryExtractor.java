@@ -1,15 +1,20 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
+import at.ac.tuwien.dbai.hgtools.util.NameStack;
+import net.sf.jsqlparser.expression.AnyComparisonExpression;
+import net.sf.jsqlparser.expression.AnyType;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
+import net.sf.jsqlparser.expression.NotExpression;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
@@ -35,96 +40,103 @@ import net.sf.jsqlparser.statement.select.WithItem;
 
 public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
-	private static class NameStack {
-		private LinkedList<HashSet<String>> scopes;
-		private LinkedList<SelectBody> selects;
-		private LinkedList<LinkedList<Table>> tables;
-
-		public NameStack() {
-			scopes = new LinkedList<>();
-			selects = new LinkedList<>();
-			tables = new LinkedList<>();
-			// global scope - no select
-			scopes.addFirst(new HashSet<>());
-			selects.addFirst(null);
-			tables.addFirst(null);
-		}
-
-		public void enterNewScope(SelectBody select) {
-			scopes.addFirst(new HashSet<>());
-			selects.addFirst(select);
-			tables.addFirst(new LinkedList<>());
-		}
-
-		public void exitCurrentScope() {
-			scopes.removeFirst();
-			selects.removeFirst();
-			tables.removeFirst();
-		}
-
-		public void addTableToCurrentScope(Table table) {
-			tables.getFirst().add(table);
-		}
-
-		public LinkedList<Table> getCurrentTables() {
-			return tables.getFirst();
-		}
-
-		public void addNameToCurrentScope(String name) {
-			scopes.getFirst().add(name);
-		}
-
-		public void addNamesToCurrentScope(Collection<String> names) {
-			for (String name : names) {
-				addNameToCurrentScope(name);
-			}
-		}
-
-		public void addNameToParentScope(String name) {
-			scopes.get(1).add(name);
-		}
-
-		public void addNamesToParentScope(Collection<String> names) {
-			for (String name : names) {
-				addNameToParentScope(name);
-			}
-		}
-
-		public SelectBody getCurrentSelect() {
-			return selects.getFirst();
-		}
-
-		public SelectBody resolve(String name) {
-			Iterator<SelectBody> selectIt = selects.iterator();
-			for (HashSet<String> names : scopes) {
-				SelectBody body = selectIt.next();
-				if (names.contains(name)) {
-					return body;
-				}
-			}
-			return null;
-		}
-	}
-
 	private class ExprVisitor extends ExpressionVisitorAdapter {
+		private SubqueryEdge currEdge;
+
 		public ExprVisitor(SelectVisitor sv) {
+			currEdge = new SubqueryEdge(SubqueryEdge.Operator.OTHER, false);
 			setSelectVisitor(sv);
 		}
 
 		@Override
-		public void visit(Column tableColumn) {
-			SelectBody source = resolver.getCurrentSelect();
-			String toResolve = (tableColumn.getTable() != null) ? tableColumn.getTable().getName()
-					: tableColumn.getColumnName();
-			SelectBody target = resolver.resolve(toResolve);
-			if (!target.equals(source)) {
-				query.addEdge(source, target);
+		public void visit(EqualsTo equalsTo) {
+			ClauseType ct = ClauseType.determineClauseType(equalsTo);
+			switch (ct) {
+			case COLUMN_OP_COLUMN:
+				SelectBody source = resolver.getCurrentSelect();
+
+				Column left = (Column) equalsTo.getLeftExpression();
+				String leftResolve = (left.getTable() != null) ? left.getTable().getName() : left.getColumnName();
+				SelectBody leftTarget = resolver.resolve(leftResolve);
+				if (!leftTarget.equals(source)) {
+					SubqueryEdge se = new SubqueryEdge(SubqueryEdge.Operator.JOIN, false);
+					query.addEdge(source, leftTarget, se);
+				}
+
+				Column right = (Column) equalsTo.getRightExpression();
+				String rightResolve = (right.getTable() != null) ? right.getTable().getName() : right.getColumnName();
+				SelectBody rightTarget = resolver.resolve(rightResolve);
+				if (!rightTarget.equals(source)) {
+					SubqueryEdge se = new SubqueryEdge(SubqueryEdge.Operator.JOIN, false);
+					query.addEdge(source, rightTarget, se);
+				}
+
+				if (!leftTarget.equals(source) && !rightTarget.equals(source)) {
+					throwException("WEIRD EQUALSTO\n" + equalsTo); // TODO troviamo un caso ed esaminiamolo
+				}
+
+				break;
+			case COLUMN_OP_CONSTANT:
+				break;
+			case COLUMN_OP_SUBSELECT:
+				// just go to the SubSelect
+				equalsTo.getRightExpression().accept(exprVisitor);
+				break;
+			case OTHER:
+				break;
+			default:
+				throw new AssertionError("Unknown clause type: " + ct);
+			}
+		}
+
+		/*
+		 * @Override public void visit(Column tableColumn) { SelectBody source =
+		 * resolver.getCurrentSelect(); String toResolve = (tableColumn.getTable() !=
+		 * null) ? tableColumn.getTable().getName() : tableColumn.getColumnName();
+		 * SelectBody target = resolver.resolve(toResolve); if (!target.equals(source))
+		 * { query.addEdge(source, target); } }
+		 */
+
+		@Override
+		public void visit(NotExpression notExpr) {
+			currEdge.setNegation(true);
+			notExpr.getExpression().accept(this);
+		}
+
+		@Override
+		public void visit(InExpression expr) {
+			if (expr.getRightItemsList() instanceof SubSelect) {
+				currEdge.setOperator(SubqueryEdge.Operator.IN);
+				currEdge.setNegation(expr.isNot());
+				if (expr.getLeftExpression() != null) {
+					expr.getLeftExpression().accept(this);
+				} else if (expr.getLeftItemsList() != null) {
+					expr.getLeftItemsList().accept(this);
+				}
+				expr.getRightItemsList().accept(this);
 			}
 		}
 
 		@Override
+		public void visit(ExistsExpression expr) {
+			if (expr.getRightExpression() instanceof SubSelect) {
+				currEdge.setOperator(SubqueryEdge.Operator.EXISTS);
+				expr.getRightExpression().accept(this);
+			} else {
+				throwException("EXISTS WITHOUT SUBSELECT\n" + expr); // TODO
+			}
+		}
+
+		@Override
+		public void visit(AnyComparisonExpression expr) {
+			if (expr.getAnyType().equals(AnyType.ANY)) {
+				currEdge.setOperator(SubqueryEdge.Operator.ANY);
+			}
+			visit(expr.getSubSelect());
+		}
+
+		@Override
 		public void visit(SubSelect subSelect) {
-			// TODO take care of the views
 			if (subSelect.getWithItemsList() != null) {
 				for (WithItem item : subSelect.getWithItemsList()) {
 					item.accept(getSelectVisitor());
@@ -136,8 +148,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			SelectBody parent = resolver.getCurrentSelect();
 			SelectBody child = subSelect.getSelectBody();
 			query.addVertex(child);
-			query.addEdge(parent, child);
-			resolver.enterNewScope(child);
+			query.addEdge(parent, child, currEdge);
+			currEdge = new SubqueryEdge(SubqueryEdge.Operator.OTHER, false);
+			boolean inSetOpList = child instanceof SetOperationList;
+			resolver.enterNewScope(child, inSetOpList);
 			child.accept(getSelectVisitor());
 			resolver.exitCurrentScope();
 
@@ -170,7 +184,65 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private Schema schema;
 	private NameStack resolver;
 	private ExprVisitor exprVisitor;
-	private Graph<SelectBody, DefaultEdge> query;
+	private SelectBody root;
+	private Graph<SelectBody, SubqueryEdge> query;
+	private HashMap<String, String> nameToViewMap;
+	private HashMap<SelectBody, LinkedList<String>> selectToViewMap;
+	private HashMap<String, QueryExtractor> viewToGraphMap;
+	private int nextID;
+
+	public static class SubqueryEdge extends DefaultEdge {
+		private static final long serialVersionUID = -511975338046031776L;
+
+		static enum Operator {
+			JOIN, IN, EXISTS, ANY, VIEW, FROM_SUBSELECT, OTHER
+		}
+
+		private Operator op;
+		private boolean neg;
+
+		public SubqueryEdge() {
+		}
+
+		public SubqueryEdge(Operator op, boolean isNegated) {
+			this.op = op;
+			neg = isNegated;
+		}
+
+		public void setOperator(Operator op) {
+			this.op = op;
+		}
+
+		public void setNegation(boolean neg) {
+			this.neg = neg;
+		}
+
+		public Operator getOperator() {
+			return op;
+		}
+
+		public boolean isOperatorNegated() {
+			return neg;
+		}
+
+		public String getLabel() {
+			StringBuilder sb = new StringBuilder(200);
+			sb.append(neg ? "not " : "");
+			sb.append(' ');
+			sb.append(op);
+			return sb.toString();
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder(200);
+			sb.append(neg ? "not " : "");
+			sb.append(' ');
+			sb.append(op);
+			String label = sb.toString();
+			return "(" + getSource() + " : " + getTarget() + " : " + label + ")";
+		}
+	}
 
 	public QueryExtractor(Schema schema) {
 		if (schema == null) {
@@ -179,7 +251,11 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		this.schema = schema;
 		resolver = new NameStack();
 		exprVisitor = new ExprVisitor(this);
-		query = new DefaultDirectedGraph<>(DefaultEdge.class);
+		query = new DefaultDirectedGraph<>(SubqueryEdge.class);
+		nameToViewMap = new HashMap<>();
+		selectToViewMap = new HashMap<>();
+		viewToGraphMap = new HashMap<>();
+		nextID = 0;
 	}
 
 	// TODO can be called only once, otherwise reset the state
@@ -187,37 +263,118 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		statement.accept(this);
 	}
 
-	public Graph<SelectBody, DefaultEdge> getQueryStructure() {
+	public Graph<SelectBody, SubqueryEdge> getQueryStructure() {
 		return query;
+	}
+
+	public SelectBody getRoot() {
+		return root;
+	}
+
+	public LinkedList<String> getGlobalNames() {
+		return resolver.getGlobalNames();
+	}
+
+	public HashMap<SelectBody, LinkedList<String>> getSelectToViewMap() {
+		return selectToViewMap;
+	}
+
+	public HashMap<String, QueryExtractor> getViewToGraphMap() {
+		return viewToGraphMap;
 	}
 
 	@Override
 	public void visit(WithItem withItem) {
-		// TODO non mi convince
-		resolver.addNameToCurrentScope(withItem.getName());
-		SelectBody body = withItem.getSelectBody();
-		resolver.enterNewScope(body);
+		String viewName = withItem.getName();
+		resolver.addNameToCurrentScope(viewName);
+		nameToViewMap.put(viewName, viewName);
+		LinkedList<String> viewAttrs = new LinkedList<String>();
+
+		int numWithItems = 0;
 		if (withItem.getWithItemList() != null) {
 			for (SelectItem item : withItem.getWithItemList()) {
-				resolver.addNameToCurrentScope(item.toString());
+				// there should be only column names here
+				Column col = (Column) ((SelectExpressionItem) item).getExpression();
+				String colName = col.getColumnName();
+				resolver.addNameToCurrentScope(colName);
+				nameToViewMap.put(colName, viewName);
+				viewAttrs.add(colName);
+				numWithItems++;
 			}
 		}
-		query.addVertex(body);
-		body.accept(this);
-		resolver.exitCurrentScope();
+		Select body = new Select();
+		body.setSelectBody(withItem.getSelectBody());
+		QueryExtractor qe = new QueryExtractor(schema);
+		qe.run(body);
+		for (String gName : qe.getGlobalNames()) {
+			if (numWithItems <= 0) {
+				resolver.addNameToCurrentScope(gName);
+				nameToViewMap.put(gName, viewName);
+				viewAttrs.add(gName);
+			}
+			numWithItems--;
+		}
+		PredicateDefinition viewPred = new PredicateDefinition(viewName, viewAttrs);
+		schema.addPredicateDefinition(viewPred);
+
+		viewToGraphMap.put(viewName, qe);
 	}
 
 	@Override
 	public void visit(PlainSelect plainSelect) {
-		if (plainSelect.getFromItem() != null) {
-			resolver.addTableToCurrentScope((Table) plainSelect.getFromItem());
-			plainSelect.getFromItem().accept(this);
+		FromItem fromItem = plainSelect.getFromItem();
+		if (fromItem != null) {
+			if (fromItem instanceof SubSelect) {
+				SubSelect subSelect = (SubSelect) fromItem;
+				if (subSelect.getWithItemsList() != null) {
+					for (WithItem withItem : subSelect.getWithItemsList()) {
+						withItem.accept(this);
+					}
+				}
+				String aliasName = (fromItem.getAlias() != null) ? fromItem.getAlias().getName() : createViewName();
+				WithItem table = new WithItem();
+				table.setName(aliasName);
+				table.setSelectBody(subSelect.getSelectBody());
+
+				SelectBody curr = resolver.getCurrentSelect();
+				if (selectToViewMap.get(curr) == null) {
+					selectToViewMap.put(curr, new LinkedList<>());
+				}
+				selectToViewMap.get(curr).add(aliasName);
+
+				table.accept(this);
+			} else {
+				resolver.addTableToCurrentScope((Table) fromItem);
+				fromItem.accept(this);
+			}
 		}
 
 		if (plainSelect.getJoins() != null) {
 			for (Join join : plainSelect.getJoins()) {
-				resolver.addTableToCurrentScope((Table) join.getRightItem());
-				join.getRightItem().accept(this);
+				FromItem joinItem = join.getRightItem();
+				if (joinItem instanceof SubSelect) {
+					SubSelect subSelect = (SubSelect) joinItem;
+					if (subSelect.getWithItemsList() != null) {
+						for (WithItem withItem : subSelect.getWithItemsList()) {
+							withItem.accept(this);
+						}
+					}
+					String aliasName = (joinItem.getAlias() != null) ? joinItem.getAlias().getName() : createViewName();
+					WithItem table = new WithItem();
+					table.setName(aliasName);
+					table.setSelectBody(subSelect.getSelectBody());
+
+					SelectBody curr = resolver.getCurrentSelect();
+					if (selectToViewMap.get(curr) == null) {
+						selectToViewMap.put(curr, new LinkedList<>());
+					}
+					selectToViewMap.get(curr).add(aliasName);
+
+					table.accept(this);
+				} else {
+					resolver.addTableToCurrentScope((Table) joinItem);
+					joinItem.accept(this);
+				}
 				if (join.getOnExpression() != null) {
 					join.getOnExpression().accept(exprVisitor);
 				}
@@ -241,14 +398,18 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		// TODO maybe analyze groupBy, having, orderBy
 	}
 
+	private String createViewName() {
+		return "anonymousView" + nextID++;
+	}
+
 	@Override
 	public void visit(SetOperationList setOpList) {
 		// no matter what the operator is - I just want the subqueries
 		for (SelectBody child : setOpList.getSelects()) {
 			SelectBody parent = resolver.getCurrentSelect();
 			query.addVertex(child);
-			query.addEdge(parent, child);
-			resolver.enterNewScope(child);
+			query.addEdge(parent, child, new SubqueryEdge(SubqueryEdge.Operator.OTHER, false));
+			resolver.enterNewScope(child, true);
 			child.accept(this);
 			resolver.exitCurrentScope();
 		}
@@ -258,10 +419,12 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(AllColumns allColumns) {
-		// TODO Auto-generated method stub
 		for (FromItem item : resolver.getCurrentTables()) {
 			PredicateDefinition p = new PredicateFinder(schema).getPredicate(item);
 			resolver.addNamesToParentScope(p.getAttributes());
+			if (resolver.isTopLevel()) {
+				resolver.addNamesToGlobalScope(p.getAttributes());
+			}
 		}
 	}
 
@@ -270,18 +433,46 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		String table = allTableColumns.getTable().getName();
 		PredicateDefinition pred = schema.getPredicateDefinition(table);
 		resolver.addNamesToParentScope(pred.getAttributes());
+		if (resolver.isTopLevel()) {
+			resolver.addNamesToGlobalScope(pred.getAttributes());
+		}
 	}
 
 	@Override
 	public void visit(SelectExpressionItem item) {
 		if (item.getAlias() != null) {
 			resolver.addNameToParentScope(item.getAlias().getName());
+			if (resolver.isTopLevel()) {
+				resolver.addGlobalName(item.getAlias().getName());
+			}
 		} else if (item.getExpression() instanceof Column) {
 			// TODO do I enter here if I have an alias but I'm also a Column?
 			Column col = (Column) item.getExpression();
 			resolver.addNameToParentScope(col.getColumnName());
+			if (resolver.isTopLevel()) {
+				resolver.addGlobalName(col.getColumnName());
+			}
+		} else if (item.getExpression() instanceof SubSelect) {
+			SubSelect exprItem = (SubSelect) item.getExpression();
+			if (exprItem.getWithItemsList() != null) {
+				for (WithItem withItem : exprItem.getWithItemsList()) {
+					withItem.accept(this);
+				}
+			}
+			String aliasName = createViewName();
+			WithItem table = new WithItem();
+			table.setName(aliasName);
+			table.setSelectBody(exprItem.getSelectBody());
+
+			SelectBody curr = resolver.getCurrentSelect();
+			if (selectToViewMap.get(curr) == null) {
+				selectToViewMap.put(curr, new LinkedList<>());
+			}
+			selectToViewMap.get(curr).add(aliasName);
+
+			table.accept(this);
 		} else {
-			// TODO item.accept(exprVisitor);
+			// item.getExpression().accept(exprVisitor);
 		}
 		// things defined in the select cannot be used in the where, right?
 		// item.getExpression().accept(exprVisitor);
@@ -333,24 +524,39 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(SubSelect subSelect) {
-		// TODO there are views here
 		// I can come here only from a FROM, right?
 		// For the SELECT I go through SelectExpressionItem
+		throwException("SUBSELECT STRANA\n" + subSelect); // TODO
+
+		if (subSelect.getWithItemsList() != null) {
+			for (WithItem withItem : subSelect.getWithItemsList()) {
+				withItem.accept(this);
+			}
+		}
 		if (subSelect.getAlias() != null) {
 			resolver.addNameToCurrentScope(subSelect.getAlias().getName());
 		}
 		SelectBody parent = resolver.getCurrentSelect();
 		SelectBody child = subSelect.getSelectBody();
 		query.addVertex(child);
-		query.addEdge(parent, child);
-		resolver.enterNewScope(child);
+		query.addEdge(parent, child); // TODO qui non creo l'arco. Why?
+		boolean inSetOpList = child instanceof SetOperationList;
+		resolver.enterNewScope(child, inSetOpList);
 		child.accept(this);
 		resolver.exitCurrentScope();
 	}
 
 	@Override
 	public void visit(Table tableName) {
-		resolver.addNameToCurrentScope(getTableAliasName(tableName));
+		String tableAlias = getTableAliasName(tableName);
+		if (nameToViewMap.containsKey(tableAlias)) {
+			SelectBody curr = resolver.getCurrentSelect();
+			if (selectToViewMap.get(curr) == null) {
+				selectToViewMap.put(curr, new LinkedList<>());
+			}
+			selectToViewMap.get(curr).add(tableAlias);
+		}
+		resolver.addNameToCurrentScope(tableAlias);
 		PredicateDefinition pred = schema.getPredicateDefinition(tableName.getName());
 		resolver.addNamesToCurrentScope(pred.getAttributes());
 	}
@@ -369,15 +575,17 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(Select select) {
-		// TODO add views to the schema as predicates and then remove them at the end of
-		// the parsing
-		/*
-		 * if (select.getWithItemsList() != null) { for (WithItem withItem :
-		 * select.getWithItemsList()) { withItem.accept(this); } }
-		 */
+		if (select.getWithItemsList() != null) {
+			for (WithItem withItem : select.getWithItemsList()) {
+				withItem.accept(this);
+			}
+		}
+
 		SelectBody body = select.getSelectBody();
+		root = body;
 		query.addVertex(body);
-		resolver.enterNewScope(body);
+		boolean inSetOpList = body instanceof SetOperationList;
+		resolver.enterNewScope(body, inSetOpList);
 		body.accept(this);
 		resolver.exitCurrentScope();
 	}
