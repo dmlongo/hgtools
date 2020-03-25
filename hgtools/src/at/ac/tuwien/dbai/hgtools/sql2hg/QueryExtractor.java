@@ -202,11 +202,19 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		private boolean neg;
 
 		public SubqueryEdge() {
+			super();
 		}
 
 		public SubqueryEdge(Operator op, boolean isNegated) {
+			super();
 			this.op = op;
 			neg = isNegated;
+		}
+
+		public SubqueryEdge(SubqueryEdge e) {
+			super();
+			this.op = e.getOperator();
+			this.neg = e.neg;
 		}
 
 		public void setOperator(Operator op) {
@@ -258,6 +266,16 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		nextID = 0;
 	}
 
+	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
+			HashMap<String, QueryExtractor> viewToGraphMap) {
+		this(schema);
+		if (nameToViewMap == null) {
+			throw new NullPointerException();
+		}
+		this.nameToViewMap.putAll(nameToViewMap);
+		this.viewToGraphMap.putAll(viewToGraphMap);
+	}
+
 	// TODO can be called only once, otherwise reset the state
 	public void run(Statement statement) {
 		statement.accept(this);
@@ -304,7 +322,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		}
 		Select body = new Select();
 		body.setSelectBody(withItem.getSelectBody());
-		QueryExtractor qe = new QueryExtractor(schema);
+		QueryExtractor qe = new QueryExtractor(schema, nameToViewMap, viewToGraphMap);
 		qe.run(body);
 		for (String gName : qe.getGlobalNames()) {
 			if (numWithItems <= 0) {

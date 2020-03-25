@@ -49,10 +49,13 @@ public class MainExtractSQL {
 				for (Statement stmt : stmts.getStatements()) {
 					QueryExtractor qExtr = processStatement(stmt, schema);
 					QueryGraphManipulator manip = new QueryGraphManipulator(qExtr);
+
 					System.out.println("\n\nDepGraphs:");
-					for (Graph<SelectBody, SubqueryEdge> depGraph : manip.computeDependencyGraphs()) {
+					for (Graph<SelectBody, SubqueryEdge> depGraph : manip.computeDependencyGraphsSimplified()) {
 						printGraph(depGraph);
 						System.out.println();
+						
+						
 					}
 				}
 			}
