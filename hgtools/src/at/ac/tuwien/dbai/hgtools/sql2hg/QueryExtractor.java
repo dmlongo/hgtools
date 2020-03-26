@@ -8,6 +8,7 @@ import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
 import at.ac.tuwien.dbai.hgtools.util.NameStack;
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.AnyComparisonExpression;
 import net.sf.jsqlparser.expression.AnyType;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
@@ -353,6 +354,8 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 				WithItem table = new WithItem();
 				table.setName(aliasName);
 				table.setSelectBody(subSelect.getSelectBody());
+				
+				subSelect.setAlias(new Alias(aliasName));
 
 				SelectBody curr = resolver.getCurrentSelect();
 				if (selectToViewMap.get(curr) == null) {
@@ -381,7 +384,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 					WithItem table = new WithItem();
 					table.setName(aliasName);
 					table.setSelectBody(subSelect.getSelectBody());
-
+					
+					subSelect.setAlias(new Alias(aliasName));
+					
 					SelectBody curr = resolver.getCurrentSelect();
 					if (selectToViewMap.get(curr) == null) {
 						selectToViewMap.put(curr, new LinkedList<>());
@@ -481,6 +486,8 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			WithItem table = new WithItem();
 			table.setName(aliasName);
 			table.setSelectBody(exprItem.getSelectBody());
+			
+			exprItem.setAlias(new Alias(aliasName));
 
 			SelectBody curr = resolver.getCurrentSelect();
 			if (selectToViewMap.get(curr) == null) {

@@ -2,13 +2,20 @@ package at.ac.tuwien.dbai.hgtools;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.jgrapht.Graph;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryGraphManipulator;
+import at.ac.tuwien.dbai.hgtools.sql2hg.QuerySimplifier;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.JSQLParserException;
@@ -19,6 +26,8 @@ import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 
 public class MainExtractSQL {
+
+	private static int nextID = 0;
 
 	public static void main(String[] args) throws JSQLParserException, IOException {
 		Schema schema = new Schema();
@@ -51,15 +60,45 @@ public class MainExtractSQL {
 					QueryGraphManipulator manip = new QueryGraphManipulator(qExtr);
 
 					System.out.println("\n\nDepGraphs:");
-					for (Graph<SelectBody, SubqueryEdge> depGraph : manip.computeDependencyGraphsSimplified()) {
+					List<Graph<SelectBody, SubqueryEdge>> graphs = manip.computeDependencyGraphsSimplified();
+					for (Graph<SelectBody, SubqueryEdge> depGraph : graphs) {
 						printGraph(depGraph);
 						System.out.println();
-						
-						
+
+						QuerySimplifier qs = new QuerySimplifier(depGraph, qExtr);
+						List<Statement> queries = qs.getSimpleQueries();
+						for (Statement query : queries) {
+							System.out.println(query);
+							System.out.println();
+							// writeToFile(file, query);
+						}
 					}
 				}
 			}
 		}
+	}
+
+	private static void writeToFile(File file, Statement query) throws IOException {
+		String newFile = file.getPath();
+		newFile = nextOutName(newFile);
+		Path newFilePath = Paths.get(newFile);
+		Files.createDirectories(newFilePath.getParent());
+		if (!Files.exists(newFilePath))
+			Files.createFile(newFilePath);
+		Files.write(Paths.get(newFile), toFile(query), Charset.forName("UTF-8"));
+	}
+
+	private static Iterable<? extends CharSequence> toFile(Statement query) {
+		// TODO Auto-generated method stub
+		LinkedList<String> res = new LinkedList<String>();
+		res.add(query.toString());
+		return res;
+	}
+
+	private static String nextOutName(String name) {
+		String root = name.substring(0, name.lastIndexOf('.'));
+		String ext = name.substring(name.lastIndexOf('.') + 1);
+		return "output/" + root + "_" + nextID++ + ext;
 	}
 
 	private static QueryExtractor processStatement(Statement stmt, Schema schema) {
