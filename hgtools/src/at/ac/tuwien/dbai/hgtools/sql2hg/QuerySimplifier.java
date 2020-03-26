@@ -14,7 +14,6 @@ import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -29,7 +28,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 
 	private Graph<SelectBody, SubqueryEdge> graph;
 	private QueryExtractor qExtr;
-	private LinkedList<Statement> queries;
+	private LinkedList<Select> queries;
 
 	private ExprVisitor exprVisitor;
 	private PlainSelect tempBody;
@@ -45,7 +44,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		this.tempBody = null;
 	}
 
-	public List<Statement> getSimpleQueries() {
+	public List<Select> getSimpleQueries() {
 		run();
 		return queries;
 	}
@@ -88,7 +87,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	private HashSet<SelectBody> findIndependentSelects(Graph<SelectBody, SubqueryEdge> g) {
 		HashSet<SelectBody> res = new HashSet<>();
 		for (SelectBody s : g.vertexSet()) {
-			if (g.inDegreeOf(s) == 0) {
+			if (g.outDegreeOf(s) == 0) {
 				res.add(s);
 			}
 		}

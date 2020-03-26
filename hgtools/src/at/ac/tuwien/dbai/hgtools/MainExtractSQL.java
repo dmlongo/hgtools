@@ -24,6 +24,7 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
+import net.sf.jsqlparser.statement.select.WithItem;
 
 public class MainExtractSQL {
 
@@ -66,11 +67,11 @@ public class MainExtractSQL {
 						System.out.println();
 
 						QuerySimplifier qs = new QuerySimplifier(depGraph, qExtr);
-						List<Statement> queries = qs.getSimpleQueries();
-						for (Statement query : queries) {
+						List<Select> queries = qs.getSimpleQueries();
+						for (Select query : queries) {
 							System.out.println(query);
 							System.out.println();
-							// writeToFile(file, query);
+							writeToFile(file, query, queries.size());
 						}
 					}
 				}
@@ -78,9 +79,10 @@ public class MainExtractSQL {
 		}
 	}
 
-	private static void writeToFile(File file, Statement query) throws IOException {
+	private static void writeToFile(File file, Select query, int size) throws IOException {
 		String newFile = file.getPath();
-		newFile = nextOutName(newFile);
+		newFile = nextOutName(newFile, size);
+		System.out.println(newFile);
 		Path newFilePath = Paths.get(newFile);
 		Files.createDirectories(newFilePath.getParent());
 		if (!Files.exists(newFilePath))
@@ -88,17 +90,56 @@ public class MainExtractSQL {
 		Files.write(Paths.get(newFile), toFile(query), Charset.forName("UTF-8"));
 	}
 
-	private static Iterable<? extends CharSequence> toFile(Statement query) {
-		// TODO Auto-generated method stub
+	private static Iterable<String> toFile(Select query) {
 		LinkedList<String> res = new LinkedList<String>();
 		res.add(query.toString());
 		return res;
 	}
 
-	private static String nextOutName(String name) {
+	private static Iterable<String> toFile2(Select query) {
+		// TODO Auto-generated method stub
+		LinkedList<String> res = new LinkedList<String>();
+		for (WithItem view : query.getWithItemsList()) {
+			LinkedList<String> strView = stringify(view);
+			res.addAll(strView);
+			res.add("\n");
+		}
+		LinkedList<String> strSel = stringify(query.getSelectBody());
+		res.addAll(strSel);
+		return res;
+	}
+	
+	private static LinkedList<String> stringify(SelectBody body) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private static LinkedList<String> stringify(WithItem view) {
+		LinkedList<String> res = new LinkedList<>();
+		
+		return res;
+	}
+	
+	private static String nextOutName(String name, int size) {
 		String root = name.substring(0, name.lastIndexOf('.'));
 		String ext = name.substring(name.lastIndexOf('.') + 1);
-		return "output/" + root + "_" + nextID++ + ext;
+		String id = getID(size);
+		return "output/" + root + "_" + id + "." + ext;
+	}
+
+	private static String getID(int size) {
+		int id = nextID++;
+		int dTot = 1, dR = 1;
+		int tot, r;
+		for (tot = size / 10; tot != 0; tot /= 10, dTot++) {
+		}
+		for (r = id / 10; r != 0; r /= 10, dR++) {
+		}
+		String prefix = "";
+		for (int i = 0; i < (dTot - dR); i++) {
+			prefix += "0";
+		}
+		return prefix + id;
 	}
 
 	private static QueryExtractor processStatement(Statement stmt, Schema schema) {
