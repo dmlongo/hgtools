@@ -82,10 +82,12 @@ public class MainConvertSQL {
 				System.out.println();
 				System.out.println(h);
 
-				String newFile = file.getPath();
-				String fileBaseName = newFile.substring(0, newFile.lastIndexOf("."));
-				newFile = "output/" + fileBaseName + ".hg";
-				String newFileMap = "output/" + fileBaseName + ".map";
+				String newFile = file.getAbsolutePath();
+				int startIdx = newFile.lastIndexOf(File.separator);
+				int endIdx = newFile.lastIndexOf('.');
+				String fileBaseName = newFile.substring(startIdx, endIdx);
+				newFile = "output" + File.separator + fileBaseName + ".hg";
+				String newFileMap = "output" + File.separator + fileBaseName + ".map";
 				Path newFilePath = Paths.get(newFile);
 				Path newFileMapPath = Paths.get(newFileMap);
 				Files.createDirectories(newFilePath.getParent());

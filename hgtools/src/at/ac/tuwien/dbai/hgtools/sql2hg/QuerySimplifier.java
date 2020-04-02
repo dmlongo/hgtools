@@ -55,25 +55,48 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			SelectBody viewBody = qExtr.getViewToGraphMap().get(viewName).getRoot();
 			WithItem view = simplify(viewBody, viewName);
 			views.put(viewName, view);
-		}
+		} // TODO fix this, look into vExtr
 
 		HashSet<SelectBody> selects = findIndependentSelects(graph);
 		for (SelectBody body : selects) {
 			Select stmt = simplify(body);
-			LinkedList<WithItem> withItemsList = new LinkedList<>();
-			LinkedList<String> viewNames = findViewsOf(body, qExtr);
-			for (String viewName : viewNames) {
-				withItemsList.add(views.get(viewName));
-			}
+			PlainSelect newBody = (PlainSelect) stmt.getSelectBody();
+			LinkedList<WithItem> withItemsList = new LinkedList<>(findViewsOf(newBody, views));
 			stmt.setWithItemsList(withItemsList);
 			queries.add(stmt);
 		}
 	}
 
+	private HashSet<WithItem> findViewsOf(PlainSelect sel, HashMap<String, WithItem> views) {
+		HashSet<WithItem> res = new HashSet<>();
+		if (sel.getFromItem() != null) {
+			Table tab = (Table) sel.getFromItem();
+			String name = tab.getName();
+			if (views.containsKey(name)) {
+				WithItem view = views.get(name);
+				res.add(view);
+				res.addAll(findViewsOf((PlainSelect) view.getSelectBody(), views));
+			}
+		}
+		if (sel.getJoins() != null) {
+			for (Join j : sel.getJoins()) {
+				String name = ((Table) j.getRightItem()).getName();
+				if (views.containsKey(name)) {
+					WithItem view = views.get(name);
+					res.add(view);
+					res.addAll(findViewsOf((PlainSelect) view.getSelectBody(), views));
+				}
+			}
+		}
+		return res;
+	}
+
 	private LinkedList<String> findViewsOf(SelectBody sel, QueryExtractor qExtr) {
 		if (qExtr.getSelectToViewMap().containsKey(sel)) {
-			return qExtr.getSelectToViewMap().get(sel);
+			LinkedList<String> res = expandViewsList(qExtr.getSelectToViewMap().get(sel), qExtr, new HashSet<>());
+			return res;
 		}
+
 		// order-dependent - same select in different branches = problem
 		for (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
 			LinkedList<String> res = findViewsOf(sel, vExtr);
@@ -82,6 +105,27 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			}
 		}
 		return new LinkedList<String>();
+	}
+
+	private LinkedList<String> expandViewsList(LinkedList<String> toExpand, QueryExtractor qExtr,
+			HashSet<String> visited) {
+		HashSet<String> resSet = new HashSet<>(toExpand);
+
+		LinkedList<String> toVisit = new LinkedList<>(resSet);
+		while (!toVisit.isEmpty()) {
+			String view = toVisit.removeFirst();
+			if (!visited.contains(view)) {
+				visited.add(view);
+
+				QueryExtractor vExtr = qExtr.getViewToGraphMap().get(view);
+				SelectBody vBody = vExtr.getRoot();
+				LinkedList<String> newRes = findViewsOf(vBody, vExtr);
+
+				resSet.addAll(newRes);
+				toVisit.addAll(newRes);
+			}
+		}
+		return new LinkedList<String>(resSet);
 	}
 
 	private HashSet<SelectBody> findIndependentSelects(Graph<SelectBody, SubqueryEdge> g) {
@@ -132,17 +176,8 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		if (plainSelect.getJoins() != null) {
 			LinkedList<Join> joins = new LinkedList<>();
 			for (Join join : plainSelect.getJoins()) {
-				FromItem joinItem = join.getRightItem();
-				if (!(joinItem instanceof SubSelect)) {
-					joins.add(join);
-				} else {
-					String name = joinItem.getAlias().getName();
-					Join newJ = new Join();
-					setJoinMod(join, newJ);
-					newJ.setRightItem(new Table(name));
-					newJ.setOnExpression(join.getOnExpression());
-					joins.add(newJ);
-				}
+				Join newJ = dealWithJoin(join);
+				joins.add(newJ);
 			}
 			tempBody.setJoins(joins);
 		}
@@ -165,6 +200,24 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		// if (plainSelect.getOracleHierarchical() != null) {
 		// plainSelect.getOracleHierarchical().accept(exprVisitor);
 		// }
+	}
+
+	private Join dealWithJoin(Join join) {
+		Join newJ = new Join();
+		setJoinMod(join, newJ);
+		FromItem joinItem = join.getRightItem();
+		if (!(joinItem instanceof SubSelect)) {
+			newJ.setRightItem(join.getRightItem());
+		} else {
+			String name = joinItem.getAlias().getName();
+			newJ.setRightItem(new Table(name));
+		}
+		if (join.getOnExpression() != null) {
+			ExprVisitor ev = new ExprVisitor();
+			join.getOnExpression().accept(ev);
+			newJ.setOnExpression(ev.getExpression());
+		}
+		return newJ;
 	}
 
 	private void setJoinMod(Join join, Join newJ) {

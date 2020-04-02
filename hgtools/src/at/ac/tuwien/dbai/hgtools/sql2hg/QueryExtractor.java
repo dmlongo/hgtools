@@ -354,7 +354,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 				WithItem table = new WithItem();
 				table.setName(aliasName);
 				table.setSelectBody(subSelect.getSelectBody());
-				
+
 				subSelect.setAlias(new Alias(aliasName));
 
 				SelectBody curr = resolver.getCurrentSelect();
@@ -384,9 +384,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 					WithItem table = new WithItem();
 					table.setName(aliasName);
 					table.setSelectBody(subSelect.getSelectBody());
-					
+
 					subSelect.setAlias(new Alias(aliasName));
-					
+
 					SelectBody curr = resolver.getCurrentSelect();
 					if (selectToViewMap.get(curr) == null) {
 						selectToViewMap.put(curr, new LinkedList<>());
@@ -418,7 +418,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			plainSelect.getOracleHierarchical().accept(exprVisitor);
 		}
 
-		// TODO maybe analyze groupBy, having, orderBy
+		if (plainSelect.getHaving() != null) {
+			plainSelect.getHaving().accept(exprVisitor);
+		}
 	}
 
 	private String createViewName() {
@@ -453,12 +455,24 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(AllTableColumns allTableColumns) {
-		String table = allTableColumns.getTable().getName();
+		String table = getTableName(allTableColumns);
 		PredicateDefinition pred = schema.getPredicateDefinition(table);
 		resolver.addNamesToParentScope(pred.getAttributes());
 		if (resolver.isTopLevel()) {
 			resolver.addNamesToGlobalScope(pred.getAttributes());
 		}
+	}
+
+	private String getTableName(AllTableColumns allTableColumns) {
+		String name = allTableColumns.getTable().getName();
+		if (!schema.existsPredicateDefinition(name)) {
+			for (Table tab : resolver.getCurrentTables()) {
+				if (tab.getAlias().getName().equals(name)) {
+					return tab.getName();
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -486,7 +500,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			WithItem table = new WithItem();
 			table.setName(aliasName);
 			table.setSelectBody(exprItem.getSelectBody());
-			
+
 			exprItem.setAlias(new Alias(aliasName));
 
 			SelectBody curr = resolver.getCurrentSelect();

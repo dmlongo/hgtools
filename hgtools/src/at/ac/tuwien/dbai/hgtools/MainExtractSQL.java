@@ -2,12 +2,7 @@ package at.ac.tuwien.dbai.hgtools;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.jgrapht.Graph;
@@ -24,13 +19,16 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
-import net.sf.jsqlparser.statement.select.WithItem;
 
 public class MainExtractSQL {
 
-	private static int nextID = 0;
+	private static int skipS = 0;
+	private static int skipE = 0;
+	private static String outDir = "output";
 
 	public static void main(String[] args) throws JSQLParserException, IOException {
+		args = setOtherArgs(args);
+
 		Schema schema = new Schema();
 		String schemaString = Util.readSQLFile(args[0]);
 		Util.readSQLPredicateDefinitions(schemaString, schema);
@@ -48,14 +46,35 @@ public class MainExtractSQL {
 		}
 	}
 
+	private static String[] setOtherArgs(String[] args) {
+		while (args[0].startsWith("-")) {
+			String cmd = args[0];
+			switch (cmd) {
+			case "-skip":
+				skipS = Integer.parseInt(args[1]);
+				skipE = Integer.parseInt(args[2]);
+				args = Util.shiftLeftResize(args, 3);
+				break;
+			case "-out":
+				outDir = args[1];
+				args = Util.shiftLeftResize(args, 2);
+				break;
+			default:
+				throw new RuntimeException("Unknown command: " + cmd);
+			}
+		}
+		return args;
+	}
+
 	private static void processFiles(File[] files, Schema schema) throws JSQLParserException, IOException {
 		for (File file : files) {
 			if (file.isDirectory()) {
 				// System.out.println("Directory: " + file.getName());
 				processFiles(file.listFiles(), schema); // Calls same method again.
 			} else if (Util.isSQLFile(file.getName())) {
-				String sqlString = Util.readSQLFile(file.getPath());
+				String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
 				Statements stmts = CCJSqlParserUtil.parseStatements(sqlString);
+				int nextID = 0;
 				for (Statement stmt : stmts.getStatements()) {
 					QueryExtractor qExtr = processStatement(stmt, schema);
 					QueryGraphManipulator manip = new QueryGraphManipulator(qExtr);
@@ -71,75 +90,12 @@ public class MainExtractSQL {
 						for (Select query : queries) {
 							System.out.println(query);
 							System.out.println();
-							writeToFile(file, query, queries.size());
+							Util.writeToFile(file, query, outDir, nextID++, queries.size());
 						}
 					}
 				}
 			}
 		}
-	}
-
-	private static void writeToFile(File file, Select query, int size) throws IOException {
-		String newFile = file.getPath();
-		newFile = nextOutName(newFile, size);
-		System.out.println(newFile);
-		Path newFilePath = Paths.get(newFile);
-		Files.createDirectories(newFilePath.getParent());
-		if (!Files.exists(newFilePath))
-			Files.createFile(newFilePath);
-		Files.write(Paths.get(newFile), toFile(query), Charset.forName("UTF-8"));
-	}
-
-	private static Iterable<String> toFile(Select query) {
-		LinkedList<String> res = new LinkedList<String>();
-		res.add(query.toString());
-		return res;
-	}
-
-	private static Iterable<String> toFile2(Select query) {
-		// TODO Auto-generated method stub
-		LinkedList<String> res = new LinkedList<String>();
-		for (WithItem view : query.getWithItemsList()) {
-			LinkedList<String> strView = stringify(view);
-			res.addAll(strView);
-			res.add("\n");
-		}
-		LinkedList<String> strSel = stringify(query.getSelectBody());
-		res.addAll(strSel);
-		return res;
-	}
-	
-	private static LinkedList<String> stringify(SelectBody body) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private static LinkedList<String> stringify(WithItem view) {
-		LinkedList<String> res = new LinkedList<>();
-		
-		return res;
-	}
-	
-	private static String nextOutName(String name, int size) {
-		String root = name.substring(0, name.lastIndexOf('.'));
-		String ext = name.substring(name.lastIndexOf('.') + 1);
-		String id = getID(size);
-		return "output/" + root + "_" + id + "." + ext;
-	}
-
-	private static String getID(int size) {
-		int id = nextID++;
-		int dTot = 1, dR = 1;
-		int tot, r;
-		for (tot = size / 10; tot != 0; tot /= 10, dTot++) {
-		}
-		for (r = id / 10; r != 0; r /= 10, dR++) {
-		}
-		String prefix = "";
-		for (int i = 0; i < (dTot - dR); i++) {
-			prefix += "0";
-		}
-		return prefix + id;
 	}
 
 	private static QueryExtractor processStatement(Statement stmt, Schema schema) {
