@@ -14,7 +14,6 @@ import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.traverse.BreadthFirstIterator;
 import org.jgrapht.traverse.DepthFirstIterator;
-import org.jgrapht.util.VertexToIntegerMapping;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import net.sf.jsqlparser.statement.select.SelectBody;
@@ -116,7 +115,7 @@ public class QueryGraphManipulator {
 		HashMap<String, QueryExtractor> viewToExtractor = qExtr.getViewToGraphMap();
 
 		HashMap<String, Graph<Integer, SubqueryEdge>> viewToGraphMap = new HashMap<>();
-		HashMap<String, VertexToIntegerMapping<SelectBody>> viewToIntMapping = new HashMap<>();
+		HashMap<String, ArrayList<SelectBody>> viewToIntMapping = new HashMap<>();
 		for (String viewName : viewToExtractor.keySet()) {
 			ArrayList<SelectBody> vIntToSelList = new ArrayList<>(query.vertexSet().size());
 			HashMap<SelectBody, Integer> vSelToIntMap = new HashMap<>();
@@ -125,7 +124,7 @@ public class QueryGraphManipulator {
 			convertToIntGraph(vRes, vExtr, vIntToSelList, vSelToIntMap);
 			addViews(vRes, vExtr, vIntToSelList, vSelToIntMap);
 			viewToGraphMap.put(viewName, vRes);
-			viewToIntMapping.put(viewName, new VertexToIntegerMapping<SelectBody>(vIntToSelList));
+			viewToIntMapping.put(viewName, vIntToSelList);
 		}
 
 		Iterator<SelectBody> it = new DepthFirstIterator<>(query, root);
@@ -134,7 +133,7 @@ public class QueryGraphManipulator {
 			if (selectToViewMap.containsKey(select)) {
 				for (String viewName : selectToViewMap.get(select)) {
 					Graph<Integer, SubqueryEdge> view = viewToGraphMap.get(viewName);
-					List<SelectBody> vIntToSelList = viewToIntMapping.get(viewName).getIndexList();
+					List<SelectBody> vIntToSelList = viewToIntMapping.get(viewName);
 					expandGraph(select, pRes, intToSelList, selToIntMap, view, vIntToSelList);
 				}
 			}

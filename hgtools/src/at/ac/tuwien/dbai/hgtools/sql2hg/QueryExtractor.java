@@ -1,7 +1,10 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Set;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
@@ -190,7 +193,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private HashMap<String, String> nameToViewMap;
 	private HashMap<SelectBody, LinkedList<String>> selectToViewMap;
 	private HashMap<String, QueryExtractor> viewToGraphMap;
-	private int nextID;
+	
+	private HashSet<String> viewsDefinedHere;
+	
+	private static int nextID;
 
 	public static class SubqueryEdge extends DefaultEdge {
 		private static final long serialVersionUID = -511975338046031776L;
@@ -264,6 +270,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		nameToViewMap = new HashMap<>();
 		selectToViewMap = new HashMap<>();
 		viewToGraphMap = new HashMap<>();
+		
+		viewsDefinedHere = new HashSet<>();
+		
 		nextID = 0;
 	}
 
@@ -302,11 +311,16 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		return viewToGraphMap;
 	}
 
+	public Set<String> getViewsDefinedHere() {
+		return Collections.unmodifiableSet(viewsDefinedHere);
+	}
+	
 	@Override
 	public void visit(WithItem withItem) {
 		String viewName = withItem.getName();
 		resolver.addNameToCurrentScope(viewName);
 		nameToViewMap.put(viewName, viewName);
+		viewsDefinedHere.add(viewName);
 		LinkedList<String> viewAttrs = new LinkedList<String>();
 
 		int numWithItems = 0;
@@ -465,7 +479,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	private String getTableName(AllTableColumns allTableColumns) {
 		String name = allTableColumns.getTable().getName();
-		if (!schema.existsPredicateDefinition(name)) {
+		if (schema.existsPredicateDefinition(name)) {
+			return name;
+		} else {
 			for (Table tab : resolver.getCurrentTables()) {
 				if (tab.getAlias().getName().equals(name)) {
 					return tab.getName();

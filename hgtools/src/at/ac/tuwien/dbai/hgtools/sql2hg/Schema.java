@@ -1,6 +1,7 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 
 /**
@@ -14,10 +15,12 @@ public class Schema implements Iterable<PredicateDefinition> {
 
 	private HashMap<String, PredicateDefinition> definitions;
 	private HashMap<PredicateDefinition, Predicate> stubs;
+	private HashSet<String> viewNames;
 
 	public Schema() {
 		definitions = new HashMap<>();
 		stubs = new HashMap<>();
+		viewNames = new HashSet<>();
 	}
 
 	public void addPredicateDefinition(PredicateDefinition predDef) {
@@ -34,6 +37,7 @@ public class Schema implements Iterable<PredicateDefinition> {
 		}
 		definitions.put(predDef.getName(), predDef);
 		stubs.put(predDef, new ViewPredicate(view));
+		viewNames.add(predDef.getName());
 	}
 
 	// TODO this method (actually the whole class) has a static behavior
@@ -67,6 +71,10 @@ public class Schema implements Iterable<PredicateDefinition> {
 		}
 	}
 
+	public boolean isViewPredicate(String name) {
+		return viewNames.contains(name);
+	}
+	
 	@Override
 	public Iterator<PredicateDefinition> iterator() {
 		return definitions.values().iterator();

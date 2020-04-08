@@ -13,9 +13,13 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
@@ -26,12 +30,20 @@ import net.sf.jsqlparser.statement.select.WithItem;
 
 public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 
+	private static String makeName(String prefix, String name) {
+		return prefix.equals("") ? name : prefix + "_" + name;
+	}
+
 	private Graph<SelectBody, SubqueryEdge> graph;
 	private QueryExtractor qExtr;
 	private LinkedList<Select> queries;
 
 	private ExprVisitor exprVisitor;
 	private PlainSelect tempBody;
+	private String tempPrefix;
+
+	private HashMap<String, String> viewNamesMap;
+	private HashSet<String> ambiguousNames;
 
 	public QuerySimplifier(Graph<SelectBody, SubqueryEdge> depGraph, QueryExtractor qExtr) {
 		if (depGraph == null || qExtr == null) {
@@ -42,6 +54,10 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		this.queries = new LinkedList<>();
 		this.exprVisitor = new ExprVisitor();
 		this.tempBody = null;
+		this.tempPrefix = "";
+
+		this.viewNamesMap = new HashMap<>();
+		this.ambiguousNames = new HashSet<>();
 	}
 
 	public List<Select> getSimpleQueries() {
@@ -50,13 +66,8 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	}
 
 	private void run() {
-		HashMap<String, WithItem> views = new HashMap<>();
-		for (String viewName : qExtr.getViewToGraphMap().keySet()) {
-			SelectBody viewBody = qExtr.getViewToGraphMap().get(viewName).getRoot();
-			WithItem view = simplify(viewBody, viewName);
-			views.put(viewName, view);
-		} // TODO fix this, look into vExtr
-
+		collectViewNames();
+		HashMap<String, WithItem> views = collectAllViews();
 		HashSet<SelectBody> selects = findIndependentSelects(graph);
 		for (SelectBody body : selects) {
 			Select stmt = simplify(body);
@@ -65,6 +76,70 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			stmt.setWithItemsList(withItemsList);
 			queries.add(stmt);
 		}
+	}
+
+	private void collectViewNames() {
+		LinkedList<QueryExtractor> toVisit = new LinkedList<>();
+		LinkedList<String> prefixes = new LinkedList<>();
+		HashSet<QueryExtractor> visited = new HashSet<>();
+		toVisit.addLast(qExtr);
+		prefixes.addLast("");
+		while (!toVisit.isEmpty()) {
+			QueryExtractor qe = toVisit.removeFirst();
+			String prefix = prefixes.removeFirst();
+			if (!visited.contains(qe)) {
+				for (String viewName : qe.getViewsDefinedHere()) {
+					String newViewName = makeName(prefix, viewName);
+					if (viewNamesMap.containsKey(viewName)) {
+						ambiguousNames.add(viewName);
+					} else {
+						viewNamesMap.put(viewName, newViewName);
+					}
+
+					QueryExtractor vExtr = qe.getViewToGraphMap().get(viewName);
+					toVisit.addLast(vExtr);
+					prefixes.addLast(newViewName);
+				}
+				visited.add(qe);
+			}
+		}
+	}
+
+	private HashMap<String, WithItem> collectAllViews() {
+		HashMap<String, WithItem> views = new HashMap<>();
+		LinkedList<QueryExtractor> toVisit = new LinkedList<>();
+		LinkedList<String> prefixes = new LinkedList<>();
+		HashSet<QueryExtractor> visited = new HashSet<>();
+		toVisit.addLast(qExtr);
+		prefixes.addLast("");
+		while (!toVisit.isEmpty()) {
+			QueryExtractor qe = toVisit.removeFirst();
+			String prefix = prefixes.removeFirst();
+			if (!visited.contains(qe)) {
+				for (String viewName : qe.getViewsDefinedHere()) {
+					QueryExtractor vExtr = qe.getViewToGraphMap().get(viewName);
+					SelectBody viewBody = vExtr.getRoot();
+					String newViewName = makeName(prefix, viewName);
+					WithItem view = simplify(viewBody, newViewName);
+					views.put(newViewName, view);
+
+					toVisit.addLast(vExtr);
+					prefixes.addLast(newViewName);
+				}
+				visited.add(qe);
+			}
+		}
+		return views;
+	}
+
+	private HashSet<SelectBody> findIndependentSelects(Graph<SelectBody, SubqueryEdge> g) {
+		HashSet<SelectBody> res = new HashSet<>();
+		for (SelectBody s : g.vertexSet()) {
+			if (g.outDegreeOf(s) == 0) {
+				res.add(s);
+			}
+		}
+		return res;
 	}
 
 	private HashSet<WithItem> findViewsOf(PlainSelect sel, HashMap<String, WithItem> views) {
@@ -128,34 +203,28 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		return new LinkedList<String>(resSet);
 	}
 
-	private HashSet<SelectBody> findIndependentSelects(Graph<SelectBody, SubqueryEdge> g) {
-		HashSet<SelectBody> res = new HashSet<>();
-		for (SelectBody s : g.vertexSet()) {
-			if (g.outDegreeOf(s) == 0) {
-				res.add(s);
-			}
-		}
-		return res;
-	}
-
 	private WithItem simplify(SelectBody viewBody, String viewName) {
 		exprVisitor.reset();
 		WithItem view = new WithItem();
 		view.setName(viewName);
+		tempPrefix = viewName;
 		tempBody = new PlainSelect();
 		viewBody.accept(this);
 		view.setSelectBody(tempBody);
 		tempBody = null;
+		tempPrefix = "";
 		return view;
 	}
 
 	private Select simplify(SelectBody body) {
 		exprVisitor.reset();
 		Select sel = new Select();
+		tempPrefix = "";
 		tempBody = new PlainSelect();
 		body.accept(this);
 		sel.setSelectBody(tempBody);
 		tempBody = null;
+		tempPrefix = "";
 		return sel;
 	}
 
@@ -163,14 +232,8 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(PlainSelect plainSelect) {
-		FromItem fromItem = plainSelect.getFromItem();
-		if (fromItem != null) {
-			if (!(fromItem instanceof SubSelect)) {
-				tempBody.setFromItem(fromItem);
-			} else {
-				String name = fromItem.getAlias().getName();
-				tempBody.setFromItem(new Table(name));
-			}
+		if (plainSelect.getFromItem() != null) {
+			plainSelect.getFromItem().accept(this);
 		}
 
 		if (plainSelect.getJoins() != null) {
@@ -184,11 +247,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 
 		if (plainSelect.getSelectItems() != null) {
 			for (SelectItem item : plainSelect.getSelectItems()) {
-				if (!(item instanceof SelectExpressionItem)) {
-					tempBody.addSelectItems(item);
-				} else {
-					item.accept(this);
-				}
+				item.accept(this);
 			}
 		}
 
@@ -196,21 +255,21 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			plainSelect.getWhere().accept(exprVisitor);
 			tempBody.setWhere(exprVisitor.getExpression());
 		}
-
-		// if (plainSelect.getOracleHierarchical() != null) {
-		// plainSelect.getOracleHierarchical().accept(exprVisitor);
-		// }
 	}
 
 	private Join dealWithJoin(Join join) {
 		Join newJ = new Join();
 		setJoinMod(join, newJ);
 		FromItem joinItem = join.getRightItem();
-		if (!(joinItem instanceof SubSelect)) {
-			newJ.setRightItem(join.getRightItem());
-		} else {
-			String name = joinItem.getAlias().getName();
-			newJ.setRightItem(new Table(name));
+		if (joinItem instanceof Table) {
+			Table newTable = updateTable((Table) joinItem);
+			newJ.setRightItem(newTable);
+		} else if (joinItem instanceof SubSelect) {
+			String oldName = joinItem.getAlias().getName();
+			String newName = makeName(tempPrefix, oldName);
+			newJ.setRightItem(new Table(newName));
+		} else if (joinItem instanceof ParenthesisFromItem) {
+			newJ.setRightItem(makeFromItem((ParenthesisFromItem) joinItem));
 		}
 		if (join.getOnExpression() != null) {
 			ExprVisitor ev = new ExprVisitor();
@@ -236,30 +295,105 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		}
 	}
 
+	// FromItem
+
+	@Override
+	public void visit(Table tableName) {
+		Table newTable = updateTable(tableName);
+		tempBody.setFromItem(newTable);
+	}
+
+	@Override
+	public void visit(SubSelect subSelect) {
+		String oldName = subSelect.getAlias().getName();
+		String newName = makeName(tempPrefix, oldName);
+		tempBody.setFromItem(new Table(newName));
+	}
+
+	@Override
+	public void visit(ParenthesisFromItem aThis) {
+		tempBody.setFromItem(makeFromItem(aThis));
+	}
+
+	private ParenthesisFromItem makeFromItem(ParenthesisFromItem par) {
+		FromItem fromItem = par.getFromItem();
+		if (fromItem instanceof Table) {
+			Table newTable = updateTable((Table) fromItem);
+			ParenthesisFromItem newPar = new ParenthesisFromItem(newTable);
+			newPar.setAlias(par.getAlias());
+			return newPar;
+		} else if (fromItem instanceof SubSelect) {
+			String oldName = ((SubSelect) fromItem).getAlias().getName();
+			String newName = makeName(tempPrefix, oldName);
+			ParenthesisFromItem newPar = new ParenthesisFromItem(new Table(newName));
+			newPar.setAlias(par.getAlias());
+			return newPar;
+		} else if (fromItem instanceof ParenthesisFromItem) {
+			ParenthesisFromItem insidePar = makeFromItem((ParenthesisFromItem) fromItem);
+			if (insidePar != null) {
+				ParenthesisFromItem newPar = new ParenthesisFromItem(insidePar);
+				newPar.setAlias(par.getAlias());
+				return newPar;
+			} else {
+				return null;
+			}
+		}
+		return null;
+	}
+
+	private Table updateTable(Table table) {
+		String oldName = table.getName();
+		String newName = oldName;
+		if (oldName != null && viewNamesMap.keySet().contains(oldName)) {
+			if (ambiguousNames.contains(oldName)) {
+				newName = makeName(tempPrefix, oldName);
+			} else {
+				newName = viewNamesMap.get(oldName);
+			}
+		}
+
+		Table newTable = new Table(newName);
+		newTable.setAlias(table.getAlias());
+		return newTable;
+	}
+
 	// SelectItem : AllColumns, AllTableColumns, SelectExpressionItem
 
 	@Override
-	public void visit(SelectExpressionItem selectExpressionItem) {
-		if (!(selectExpressionItem.getExpression() instanceof SubSelect)) {
-			tempBody.addSelectItems(selectExpressionItem);
-		} else {
-			// TODO there could also be an alias
-			// chissene, robe nella select sono ininfluenti
-			/*
-			 * SubSelect exprItem = (SubSelect) item.getExpression(); if
-			 * (exprItem.getWithItemsList() != null) { for (WithItem withItem :
-			 * exprItem.getWithItemsList()) { withItem.accept(this); } } String aliasName =
-			 * createViewName(); WithItem table = new WithItem(); table.setName(aliasName);
-			 * table.setSelectBody(exprItem.getSelectBody());
-			 * 
-			 * SelectBody curr = resolver.getCurrentSelect(); if (selectToViewMap.get(curr)
-			 * == null) { selectToViewMap.put(curr, new LinkedList<>()); }
-			 * selectToViewMap.get(curr).add(aliasName);
-			 * 
-			 * table.accept(this);
-			 */
-		}
+	public void visit(AllColumns allColumns) {
+		tempBody.addSelectItems(allColumns);
 	}
+
+	@Override
+	public void visit(AllTableColumns allTableColumns) {
+		// TODO table is alias named as view = problem
+		Table newTable = updateTable(allTableColumns.getTable());
+		tempBody.addSelectItems(new AllTableColumns(newTable));
+	}
+
+	@Override
+	public void visit(SelectExpressionItem selectExpressionItem) {
+		Expression expr = selectExpressionItem.getExpression();
+		ColumnFinder cf = new ColumnFinder();
+		for (Column col : cf.getColumns(expr)) {
+			if (col.getTable() != null) {
+				col.setTable(updateTable(col.getTable()));
+			}
+		}
+		tempBody.addSelectItems(selectExpressionItem);
+	}
+
+	private Column updateColumn(Column col) {
+		Table newTable = null;
+		if (col.getTable() != null) {
+			newTable = updateTable(col.getTable());
+		}
+
+		Column newCol = new Column(newTable, col.getColumnName());
+		return newCol;
+	}
+
+	// ExprVisitor
 
 	private class ExprVisitor extends ExpressionVisitorAdapter {
 		// TODO might consider to set a SelectVisitor
@@ -293,7 +427,13 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		public void visit(EqualsTo expr) {
 			ClauseType ct = ClauseType.determineClauseType(expr);
 			if (ct.equals(ClauseType.COLUMN_OP_COLUMN)) {
-				eqs.add(expr);
+				Column left = (Column) expr.getLeftExpression();
+				Column right = (Column) expr.getRightExpression();
+
+				EqualsTo newExpr = new EqualsTo();
+				newExpr.setLeftExpression(updateColumn(left));
+				newExpr.setRightExpression(updateColumn(right));
+				eqs.add(newExpr);
 			}
 		}
 	}
