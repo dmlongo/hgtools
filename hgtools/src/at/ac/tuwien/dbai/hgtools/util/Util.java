@@ -152,4 +152,12 @@ public class Util {
 		return prefix + id;
 	}
 
+	public static <T> LinkedList<T> deepCopy(List<T> list) {
+		LinkedList<T> copy = new LinkedList<>();
+		for (T e : list) {
+			copy.add(e);
+		}
+		return copy;
+	}
+	
 }

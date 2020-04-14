@@ -9,8 +9,11 @@ import java.util.List;
 import org.jgrapht.Graph;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
+import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
+import net.sf.jsqlparser.expression.WindowOffset;
+import net.sf.jsqlparser.expression.WindowRange;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
@@ -19,6 +22,7 @@ import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
@@ -434,6 +438,45 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 				newExpr.setLeftExpression(updateColumn(left));
 				newExpr.setRightExpression(updateColumn(right));
 				eqs.add(newExpr);
+			}
+		}
+		
+		@Override
+		public void visit(AnalyticExpression expr) {
+			if (expr.getExpression() != null) {
+				expr.getExpression().accept(this);
+			}
+			if (expr.getDefaultValue() != null) {
+				expr.getDefaultValue().accept(this);
+			}
+			if (expr.getOffset() != null) {
+				expr.getOffset().accept(this);
+			}
+			if (expr.getKeep() != null) {
+				expr.getKeep().accept(this);
+			}
+			// TODO this is a problem in the adapter
+			if (expr.getOrderByElements() != null) {
+				for (OrderByElement element : expr.getOrderByElements()) {
+					element.getExpression().accept(this);
+				}
+			}
+
+			if (expr.getWindowElement() != null) {
+				WindowRange range = expr.getWindowElement().getRange();
+				if (range != null) {
+					if (range.getStart() != null && range.getStart().getExpression() != null) {
+						range.getStart().getExpression().accept(this);
+					}
+					if (range.getEnd() != null && range.getEnd().getExpression() != null) {
+						range.getEnd().getExpression().accept(this);
+					}
+				}
+
+				WindowOffset offset = expr.getWindowElement().getOffset();
+				if (offset != null && offset.getExpression() != null) {
+					offset.getExpression().accept(this);
+				}
 			}
 		}
 	}
