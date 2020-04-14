@@ -2,6 +2,7 @@ package at.ac.tuwien.dbai.hgtools.hypergraph;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,7 +29,7 @@ public class Hypergraph {
 	public Set<Edge> getEdges() {
 		return edges;
 	}
-	
+
 	public int cntVertices() {
 		return vertices.size();
 	}
@@ -57,7 +58,34 @@ public class Hypergraph {
 			out.add(e);
 		}
 		return out;
+	}
 
+	public List<String> toPaceFile() {
+		List<String> out = new LinkedList<>();
+		int n = cntVertices();
+		int m = cntEdges();
+		out.add("p htd " + n + " " + m + "\n");
+		int nextEdge = 1;
+		int nextVertex = 1;
+		HashMap<String, Integer> s2i = new HashMap<>();
+		for (Edge e : edges) {
+			StringBuilder line = new StringBuilder(200);
+			line.append(nextEdge++);
+			for (Iterator<String> it = e.getVertices().iterator(); it.hasNext();) {
+				String v = it.next();
+				if (!s2i.containsKey(v)) {
+					s2i.put(v, nextVertex++);
+				}
+				int iV = s2i.get(v);
+				line.append(' ');
+				line.append(iV);
+				if (!it.hasNext()) {
+					line.append('\n');
+				}
+			}
+			out.add(line.toString());
+		}
+		return out;
 	}
 
 	public int degree() {
