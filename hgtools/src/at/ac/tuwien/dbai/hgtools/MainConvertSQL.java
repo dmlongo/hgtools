@@ -26,7 +26,13 @@ import net.sf.jsqlparser.statement.select.Select;
 
 public class MainConvertSQL {
 
+	private static int skipS = 0;
+	private static int skipE = 0;
+	private static String outDir = "output";
+
 	public static void main(String[] args) throws JSQLParserException, IOException {
+		args = setOtherArgs(args);
+
 		Schema schema = new Schema();
 		String schemaString = Util.readSQLFile(args[0]);
 		Util.readSQLPredicateDefinitions(schemaString, schema);
@@ -50,7 +56,7 @@ public class MainConvertSQL {
 				// System.out.println("Directory: " + file.getName());
 				processFiles(file.listFiles(), schema); // Calls same method again.
 			} else if (Util.isSQLFile(file.getName())) {
-				String sqlString = Util.readSQLFile(file.getPath());
+				String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
 				Statement stmt = CCJSqlParserUtil.parse(sqlString);
 				Select selectStmt = (Select) stmt;
 				ConjunctiveQueryFinder hgFinder = new ConjunctiveQueryFinder(schema);
@@ -86,8 +92,8 @@ public class MainConvertSQL {
 				int startIdx = newFile.lastIndexOf(File.separator);
 				int endIdx = newFile.lastIndexOf('.');
 				String fileBaseName = newFile.substring(startIdx, endIdx);
-				newFile = "output" + File.separator + fileBaseName + ".hg";
-				String newFileMap = "output" + File.separator + fileBaseName + ".map";
+				newFile = outDir + File.separator + fileBaseName + ".hg";
+				String newFileMap = outDir + File.separator + fileBaseName + ".map";
 				Path newFilePath = Paths.get(newFile);
 				Path newFileMapPath = Paths.get(newFileMap);
 				Files.createDirectories(newFilePath.getParent());
@@ -117,6 +123,26 @@ public class MainConvertSQL {
 			lines.add(sb.toString());
 		}
 		return lines;
+	}
+
+	private static String[] setOtherArgs(String[] args) {
+		while (args[0].startsWith("-")) {
+			String cmd = args[0];
+			switch (cmd) {
+			case "-skip":
+				skipS = Integer.parseInt(args[1]);
+				skipE = Integer.parseInt(args[2]);
+				args = Util.shiftLeftResize(args, 3);
+				break;
+			case "-out":
+				outDir = args[1];
+				args = Util.shiftLeftResize(args, 2);
+				break;
+			default:
+				throw new RuntimeException("Unknown command: " + cmd);
+			}
+		}
+		return args;
 	}
 
 }

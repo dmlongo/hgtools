@@ -79,7 +79,8 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private HashMap<String, String> nameToViewMap;
 	private HashMap<SelectBody, LinkedList<String>> selectToViewMap;
 	private HashMap<String, QueryExtractor> viewToGraphMap;
-
+	private LinkedList<SelectItem> viewSelectItems;
+	
 	private HashSet<String> viewsDefinedHere;
 
 	private List<WithItem> tmpViews;
@@ -95,6 +96,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		nameToViewMap = new HashMap<>();
 		selectToViewMap = new HashMap<>();
 		viewToGraphMap = new HashMap<>();
+		viewSelectItems = new LinkedList<>();
 
 		viewsDefinedHere = new HashSet<>();
 
@@ -109,6 +111,12 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		}
 		this.nameToViewMap.putAll(nameToViewMap);
 		this.viewToGraphMap.putAll(viewToGraphMap);
+	}
+
+	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
+			HashMap<String, QueryExtractor> viewToGraphMap, LinkedList<SelectItem> viewSelItems) {
+		this(schema, nameToViewMap, viewToGraphMap);
+		this.viewSelectItems = viewSelItems;
 	}
 
 	// TODO can be called only once, otherwise reset the state
@@ -136,6 +144,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		return viewToGraphMap;
 	}
 
+	public List<SelectItem> getViewSelectItems() {
+		return viewSelectItems;
+	}
+	
 	public Set<String> getViewsDefinedHere() {
 		return Collections.unmodifiableSet(viewsDefinedHere);
 	}
@@ -144,7 +156,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	public void visit(WithItem withItem) {
 		String viewName = withItem.getName();
 
-		// TODO test to check if view name already exists
+		// test to check if view name already exists
 		if (viewsDefinedHere.contains(viewName)) {
 			throw new RuntimeException(viewName + " already in viewsDefinedHere");
 		}
@@ -156,11 +168,13 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		nameToViewMap.put(viewName, viewName);
 		viewsDefinedHere.add(viewName);
 		LinkedList<String> viewAttrs = new LinkedList<String>();
+		LinkedList<SelectItem> viewSelItems = new LinkedList<>();
 
 		int numWithItems = 0;
 		if (withItem.getWithItemList() != null) {
 			for (SelectItem item : withItem.getWithItemList()) {
 				// there should be only column names here
+				viewSelItems.add(item);
 				Column col = (Column) ((SelectExpressionItem) item).getExpression();
 				String colName = col.getColumnName();
 				resolver.addNameToCurrentScope(colName);
@@ -175,7 +189,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		Select body = new Select();
 		body.setWithItemsList(withItemsList);
 		body.setSelectBody(withItem.getSelectBody());
-		QueryExtractor qe = new QueryExtractor(schema, nameToViewMap, viewToGraphMap);
+		QueryExtractor qe = new QueryExtractor(schema, nameToViewMap, viewToGraphMap, viewSelItems);
 		qe.run(body);
 		for (String gName : qe.getGlobalNames()) {
 			if (numWithItems <= 0) {

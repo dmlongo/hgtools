@@ -5,6 +5,7 @@ import java.util.HashSet;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
+import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.WindowOffset;
 import net.sf.jsqlparser.expression.WindowRange;
 import net.sf.jsqlparser.schema.Column;
@@ -26,10 +27,20 @@ public class ColumnFinder extends ExpressionVisitorAdapter {
 	}
 
 	@Override
-	public String toString() {
-		return columns.toString();
-	}
-
+    public void visit(Function function) {
+        if (function.getParameters() != null) {
+            function.getParameters().accept(this);
+        }
+        
+        if (function.getNamedParameters() != null) {
+        	function.getNamedParameters().accept(this);
+        }
+        
+        if (function.getKeep() != null) {
+            function.getKeep().accept(this);
+        }
+    }
+	
 	@Override
 	public void visit(AnalyticExpression expr) {
 		if (expr.getExpression() != null) {
@@ -69,4 +80,9 @@ public class ColumnFinder extends ExpressionVisitorAdapter {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return columns.toString();
+	}
+	
 }

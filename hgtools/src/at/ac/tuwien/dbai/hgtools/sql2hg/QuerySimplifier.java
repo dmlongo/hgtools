@@ -125,6 +125,9 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 					SelectBody viewBody = vExtr.getRoot();
 					String newViewName = makeName(prefix, viewName);
 					WithItem view = simplify(viewBody, newViewName);
+					if (!vExtr.getViewSelectItems().isEmpty()) {
+						view.setWithItemList(vExtr.getViewSelectItems());
+					}
 					views.put(newViewName, view);
 
 					toVisit.addLast(vExtr);
@@ -440,7 +443,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 				eqs.add(newExpr);
 			}
 		}
-		
+
 		@Override
 		public void visit(AnalyticExpression expr) {
 			if (expr.getExpression() != null) {

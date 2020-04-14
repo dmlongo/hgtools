@@ -1,6 +1,7 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -83,6 +84,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	// private ViewPredicate currentView;
 	private ArrayList<SelectExpressionItem> selExprItBuffer;
 	private ArrayList<Alias> aliasesBuffer;
+	private HashMap<String, Column> viewAttrToCol;
 
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
@@ -102,6 +104,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		// currentView = null;
 		selExprItBuffer = new ArrayList<>(17);
 		aliasesBuffer = new ArrayList<>(17);
+		viewAttrToCol = new HashMap<>();
 
 		tables = new HashSet<>();
 		joins = new HashSet<>();
@@ -137,9 +140,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		if (withItem.getWithItemList() != null) {
 			for (SelectItem item : withItem.getWithItemList()) {
 				aliasesBuffer.add(new Alias(item.toString()));
-				// item.accept(this);
-				// TODO these items should just be names for the columns of the view
-				// throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
 			}
 		}
 		withItem.getSelectBody().accept(this);
@@ -166,14 +166,28 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			aliasesBuffer.clear();
 			for (SelectExpressionItem item : selExprItBuffer) {
 				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
-				if (viewAttr != null) {
+				Column col = extractColumn(item.getExpression());
+				
+				if (viewAttr == null && col != null) {
+					viewAttr = col.getColumnName();
+				}
+				
+				if (viewAttr != null || col != null) {
+					currentViewInfo.attr.add(viewAttr);
+					viewAttrToCol.put(viewAttr, col);					
+				}
+				
+				
+				/*if (viewAttr != null) {
 					currentViewInfo.attr.add(viewAttr);
 				} else {
-					Column col = extractColumn(item.getExpression());
+					// if col == null, don't do anything?
 					String defAttr = col.getColumnName();
 					currentViewInfo.attr.add(defAttr);
-				}
+				}*/
 			}
+			selExprItBuffer.clear();
+			
 			currentViewInfo.def = new PredicateDefinition(currentViewInfo.name, currentViewInfo.attr);
 			schema.addPredicateDefinition(currentViewInfo.def);
 			currentViewInfo.pred = new ViewPredicate(currentViewInfo.def);
@@ -195,14 +209,23 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		}
 
 		if (currentState == ParsingState.READING_VIEW) {
-			for (SelectExpressionItem item : selExprItBuffer) {
+			for (String viewAttr : viewAttrToCol.keySet()) {
+				Column col = viewAttrToCol.get(viewAttr);
+				if (col != null) {
+					String defPred = nResolver.resolveColumn(col).getAlias();
+					String defAttr = col.getColumnName();
+					currentViewInfo.pred.defineAttribute(viewAttr, defPred, defAttr);
+				}
+			}
+			viewAttrToCol.clear();
+			/*for (SelectExpressionItem item : selExprItBuffer) {
 				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
 				Column col = extractColumn(item.getExpression());
+				// TODO if col == null, don't do anything?
 				String defPred = nResolver.resolveColumn(col).getAlias();
 				String defAttr = col.getColumnName();
 				currentViewInfo.pred.defineAttribute(viewAttr, defPred, defAttr);
-			}
-			selExprItBuffer.clear();
+			}*/
 		}
 
 		if (plainSelect.getWhere() != null) {
@@ -241,7 +264,11 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	private Column extractColumn(Expression expression) {
 		ColumnFinder cf = new ColumnFinder();
 		Set<Column> cols = cf.getColumns(expression);
-		return cols.iterator().next();
+		if (cols.iterator().hasNext()) {
+			return cols.iterator().next();
+		} else {
+			return null;
+		}
 	}
 
 	// SelectItemVisitor

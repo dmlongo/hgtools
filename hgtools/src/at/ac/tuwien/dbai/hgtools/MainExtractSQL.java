@@ -46,26 +46,6 @@ public class MainExtractSQL {
 		}
 	}
 
-	private static String[] setOtherArgs(String[] args) {
-		while (args[0].startsWith("-")) {
-			String cmd = args[0];
-			switch (cmd) {
-			case "-skip":
-				skipS = Integer.parseInt(args[1]);
-				skipE = Integer.parseInt(args[2]);
-				args = Util.shiftLeftResize(args, 3);
-				break;
-			case "-out":
-				outDir = args[1];
-				args = Util.shiftLeftResize(args, 2);
-				break;
-			default:
-				throw new RuntimeException("Unknown command: " + cmd);
-			}
-		}
-		return args;
-	}
-
 	private static void processFiles(File[] files, Schema schema) throws JSQLParserException, IOException {
 		for (File file : files) {
 			if (file.isDirectory()) {
@@ -167,6 +147,26 @@ public class MainExtractSQL {
 				}
 			}
 		}
+	}
+
+	private static String[] setOtherArgs(String[] args) {
+		while (args[0].startsWith("-")) {
+			String cmd = args[0];
+			switch (cmd) {
+			case "-skip":
+				skipS = Integer.parseInt(args[1]);
+				skipE = Integer.parseInt(args[2]);
+				args = Util.shiftLeftResize(args, 3);
+				break;
+			case "-out":
+				outDir = args[1];
+				args = Util.shiftLeftResize(args, 2);
+				break;
+			default:
+				throw new RuntimeException("Unknown command: " + cmd);
+			}
+		}
+		return args;
 	}
 
 }
