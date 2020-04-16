@@ -7,57 +7,26 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.NotExpression;
-import net.sf.jsqlparser.expression.Parenthesis;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
-import net.sf.jsqlparser.expression.operators.relational.Between;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.InExpression;
-import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
-import net.sf.jsqlparser.expression.operators.relational.MinorThan;
-import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.create.table.CreateTable;
-import net.sf.jsqlparser.statement.delete.Delete;
-import net.sf.jsqlparser.statement.insert.Insert;
-import net.sf.jsqlparser.statement.merge.Merge;
-import net.sf.jsqlparser.statement.replace.Replace;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.LateralSubSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SubJoin;
-import net.sf.jsqlparser.statement.select.SubSelect;
 import net.sf.jsqlparser.statement.select.WithItem;
-import net.sf.jsqlparser.statement.update.Update;
 
 public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
-	private static String getTableAliasName(Table table) {
-		String tableAliasName;
-		if (table.getAlias() != null)
-			tableAliasName = table.getAlias().getName();
-		else
-			tableAliasName = table.getName();
-		return tableAliasName;
-	}
-
 	private static enum ParsingState {
-		WAITING, READING_VIEW, IN_SELECT, FINISHED
+		WAITING, READING_VIEW, READING_VIEW_SETOPLIST, IN_SELECT, FINISHED
 	}
 
 	private ParsingState currentState;
@@ -79,9 +48,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private ViewInfo currentViewInfo;
 
-	// private LinkedList<ViewInfo> viewDefs;
-	// private PredicateDefinition currentViewDef;
-	// private ViewPredicate currentView;
 	private ArrayList<SelectExpressionItem> selExprItBuffer;
 	private ArrayList<Alias> aliasesBuffer;
 	private HashMap<String, Column> viewAttrToCol;
@@ -89,7 +55,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
 
-	// private ConjunctiveQuery currentCQ;
 	private LinkedList<ConjunctiveQuery> cqs;
 
 	public ConjunctiveQueryFinder(Schema schema) {
@@ -100,8 +65,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		nResolver = new NameResolver();
 
 		currentViewInfo = null;
-		// viewDefs = new LinkedList<>();
-		// currentView = null;
 		selExprItBuffer = new ArrayList<>(17);
 		aliasesBuffer = new ArrayList<>(17);
 		viewAttrToCol = new HashMap<>();
@@ -109,7 +72,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		tables = new HashSet<>();
 		joins = new HashSet<>();
 
-		// currentCQ = null;
 		cqs = new LinkedList<>();
 
 		currentState = ParsingState.WAITING;
@@ -143,13 +105,20 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			}
 		}
 		withItem.getSelectBody().accept(this);
-		schema.addPredicateDefinition(currentViewInfo.def, currentViewInfo.pred);
+		if (currentViewInfo.pred != null) {
+			schema.addPredicateDefinition(currentViewInfo.def, currentViewInfo.pred);
+		}
 		currentViewInfo = null;
 	}
 
 	@Override
 	public void visit(PlainSelect plainSelect) {
 		nResolver.enterNewScope();
+
+		if (plainSelect.getFromItem() == null) {
+			currentState = ParsingState.READING_VIEW_SETOPLIST;
+		}
+
 		if (plainSelect.getSelectItems() != null) {
 			for (SelectItem item : plainSelect.getSelectItems()) {
 				// TODO if view update columns
@@ -167,30 +136,32 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 			for (SelectExpressionItem item : selExprItBuffer) {
 				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
 				Column col = extractColumn(item.getExpression());
-				
+
 				if (viewAttr == null && col != null) {
 					viewAttr = col.getColumnName();
 				}
-				
+
 				if (viewAttr != null || col != null) {
 					currentViewInfo.attr.add(viewAttr);
-					viewAttrToCol.put(viewAttr, col);					
+					if (plainSelect.getFromItem() != null) {
+						viewAttrToCol.put(viewAttr, col);
+					}
 				}
-				
-				
-				/*if (viewAttr != null) {
-					currentViewInfo.attr.add(viewAttr);
-				} else {
-					// if col == null, don't do anything?
-					String defAttr = col.getColumnName();
-					currentViewInfo.attr.add(defAttr);
-				}*/
 			}
 			selExprItBuffer.clear();
-			
+
 			currentViewInfo.def = new PredicateDefinition(currentViewInfo.name, currentViewInfo.attr);
 			schema.addPredicateDefinition(currentViewInfo.def);
 			currentViewInfo.pred = new ViewPredicate(currentViewInfo.def);
+		} else if (currentState == ParsingState.READING_VIEW_SETOPLIST) {
+			for (SelectExpressionItem item : selExprItBuffer) {
+				Column col = (Column) item.getExpression();
+				currentViewInfo.attr.add(col.getColumnName());
+			}
+			selExprItBuffer.clear();
+
+			currentViewInfo.def = new PredicateDefinition(currentViewInfo.name, currentViewInfo.attr);
+			schema.addPredicateDefinition(currentViewInfo.def);
 		}
 
 		if (plainSelect.getFromItem() != null) {
@@ -218,14 +189,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 				}
 			}
 			viewAttrToCol.clear();
-			/*for (SelectExpressionItem item : selExprItBuffer) {
-				String viewAttr = item.getAlias() != null ? item.getAlias().getName() : null;
-				Column col = extractColumn(item.getExpression());
-				// TODO if col == null, don't do anything?
-				String defPred = nResolver.resolveColumn(col).getAlias();
-				String defAttr = col.getColumnName();
-				currentViewInfo.pred.defineAttribute(viewAttr, defPred, defAttr);
-			}*/
 		}
 
 		if (plainSelect.getWhere() != null) {
@@ -242,7 +205,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	private void findEqualities(Join join) {
 		Table joinTable = (Table) join.getRightItem();
-		Predicate joinPredicate = nResolver.resolveTableName(getTableAliasName(joinTable));
+		Predicate joinPredicate = nResolver.resolveTableName(Util.getTableAliasName(joinTable));
 		for (Predicate p : nResolver.getPredicatesInCurrentScope()) {
 			for (Equality eq : findCommonColumns(joinPredicate, p)) {
 				joins.add(eq);
@@ -284,13 +247,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	@Override
 	public void visit(SelectExpressionItem item) {
 		selExprItBuffer.add(item);
-		/*
-		 * item.getExpression().accept(this); if (currentView != null &&
-		 * viewColumnMap[0] != null) { if (item.getAlias() != null) { viewColumnMap[1] =
-		 * item.getAlias().getName(); } else { viewColumnMap[1] = viewColumnMap[0]; }
-		 * schema.addViewColumn(currentView, viewColumnMap[1], viewColumnMap[0]);
-		 * viewColumnMap[0] = null; viewColumnMap[1] = null; }
-		 */
 	}
 
 	// FromItemVisitor
@@ -299,7 +255,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	public void visit(Table tableName) {
 		// TODO what if I'm not coming from a FROM clause?
 		String tableWholeName = tableName.getFullyQualifiedName();
-		String tableAliasName = getTableAliasName(tableName);
+		String tableAliasName = Util.getTableAliasName(tableName);
 		// PredicateDefinition pred = schema.getPredicateDefinition(tableWholeName);
 		Predicate table = schema.newPredicate(tableWholeName); // TODO problematic line
 		table.setAlias(tableAliasName);
@@ -315,48 +271,9 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		default:
 			throw new AssertionError("The current state cannot be: " + currentState);
 		}
-
-		/*
-		 * String tableWholeName = tableName.getFullyQualifiedName(); String
-		 * tableAliasName = getTableAliasName(tableName); if
-		 * (!otherItemNames.contains(tableWholeName.toLowerCase()) &&
-		 * !tables.containsKey(tableAliasName)) { tables.put(tableAliasName,
-		 * tableWholeName); } /* TODO When tableName is the name of a view, I should add
-		 * the "expanded" views (the original tables) instead of the name of the view to
-		 * the current scope
-		 */
-		// tf.addTableToCurrentScope(tableWholeName, tableAliasName);
 	}
 
-	@Override
-	public void visit(SubSelect subSelect) {
-		// TODO Auto-generated method stub
-		super.visit(subSelect);
-		/*
-		 * if (subSelect.getWithItemsList() != null) { for (WithItem withItem :
-		 * subSelect.getWithItemsList()) { withItem.accept(this); } }
-		 * subSelect.getSelectBody().accept(this);
-		 */
-	}
-
-	@Override
-	public void visit(SubJoin subjoin) {
-		// TODO Auto-generated method stub
-		super.visit(subjoin);
-		/*
-		 * subjoin.getLeft().accept(this); for (Join j : subjoin.getJoinList()) {
-		 * j.getRightItem().accept(this); }
-		 */
-	}
-
-	@Override
-	public void visit(LateralSubSelect lateralSubSelect) {
-		// TODO Auto-generated method stub
-		super.visit(lateralSubSelect);
-		// lateralSubSelect.getSubSelect().getSelectBody().accept(this);
-	}
-
-	// ExpressionVisitor
+	// ExpressionVisitor - assuming only AND and equalities in here
 
 	@Override
 	public void visit(EqualsTo equalsTo) {
@@ -385,7 +302,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		case COLUMN_OP_CONSTANT:
 			break;
 		case COLUMN_OP_SUBSELECT:
-			// TODO maybe do something
 			break;
 		case OTHER:
 			super.visit(equalsTo);
@@ -395,73 +311,13 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		}
 	}
 
-	@Override
-	public void visit(GreaterThan greaterThan) {
-	}
-
-	@Override
-	public void visit(GreaterThanEquals greaterThanEquals) {
-	}
-
-	@Override
-	public void visit(MinorThan minorThan) {
-	}
-
-	@Override
-	public void visit(MinorThanEquals minorThanEquals) {
-	}
-
-	@Override
-	public void visit(NotEqualsTo notEqualsTo) {
-	}
-
-	@Override
-	public void visit(Between between) {
-	}
-
-	@Override
-	public void visit(LikeExpression likeExpression) {
-	}
-
-	@Override
-	public void visit(AndExpression andExpression) {
-		visitBinaryExpression(andExpression);
-	}
-
-	@Override
-	public void visit(OrExpression orExpression) {
-		// TODO maybe do something more complicated
-	}
-
-	@Override
-	public void visit(NotExpression aThis) {
-	}
-
-	public void visitBinaryExpression(BinaryExpression binaryExpression) {
-		binaryExpression.getLeftExpression().accept(this);
-		binaryExpression.getRightExpression().accept(this);
-	}
-
-	@Override
-	public void visit(Parenthesis parenthesis) {
-		parenthesis.getExpression().accept(this);
-	}
-
-	@Override
-	public void visit(ExistsExpression existsExpression) {
-	}
-
-	@Override
-	public void visit(InExpression inExpression) {
-	}
-
 	// StatementVisitor
 
 	@Override
 	public void visit(Select select) {
 		if (select.getWithItemsList() != null) {
-			currentState = ParsingState.READING_VIEW;
 			for (WithItem withItem : select.getWithItemsList()) {
+				currentState = ParsingState.READING_VIEW;
 				withItem.accept(this);
 			}
 			currentState = ParsingState.WAITING;
@@ -469,83 +325,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		currentState = ParsingState.IN_SELECT;
 		select.getSelectBody().accept(this);
 		currentState = ParsingState.FINISHED;
-	}
-
-	@Override
-	public void visit(Insert insert) {
-		// TODO Auto-generated method stub
-		super.visit(insert);
-		/*
-		 * tables.put(getTableAliasName(insert.getTable()),
-		 * insert.getTable().getName()); if (insert.getItemsList() != null) {
-		 * insert.getItemsList().accept(this); } if (insert.getSelect() != null) {
-		 * visit(insert.getSelect()); }
-		 */
-	}
-
-	@Override
-	public void visit(Update update) {
-		// TODO Auto-generated method stub
-		super.visit(update);
-		/*
-		 * for (Table table : update.getTables()) { tables.put(getTableAliasName(table),
-		 * table.getName()); } if (update.getExpressions() != null) { for (Expression
-		 * expression : update.getExpressions()) { expression.accept(this); } }
-		 * 
-		 * if (update.getFromItem() != null) { update.getFromItem().accept(this); }
-		 * 
-		 * if (update.getJoins() != null) { for (Join join : update.getJoins()) {
-		 * join.getRightItem().accept(this); } }
-		 * 
-		 * if (update.getWhere() != null) { update.getWhere().accept(this); }
-		 */
-	}
-
-	@Override
-	public void visit(Delete delete) {
-		// TODO Auto-generated method stub
-		super.visit(delete);
-		/*
-		 * tables.put(getTableAliasName(delete.getTable()),
-		 * delete.getTable().getName()); if (delete.getWhere() != null) {
-		 * delete.getWhere().accept(this); }
-		 */
-	}
-
-	@Override
-	public void visit(Replace replace) {
-		// TODO Auto-generated method stub
-		super.visit(replace);
-		/*
-		 * tables.put(getTableAliasName(replace.getTable()),
-		 * replace.getTable().getName()); if (replace.getExpressions() != null) { for
-		 * (Expression expression : replace.getExpressions()) { expression.accept(this);
-		 * } } if (replace.getItemsList() != null) {
-		 * replace.getItemsList().accept(this); }
-		 */
-	}
-
-	@Override
-	public void visit(CreateTable createTable) {
-		// TODO Auto-generated method stub
-		super.visit(createTable);
-		/*
-		 * tables.put(getTableAliasName(create.getTable()),
-		 * create.getTable().getName()); if (create.getSelect() != null) {
-		 * create.getSelect().accept(this); }
-		 */
-	}
-
-	@Override
-	public void visit(Merge merge) {
-		// TODO Auto-generated method stub
-		super.visit(merge);
-		/*
-		 * tables.put(getTableAliasName(merge.getTable()), merge.getTable().getName());
-		 * if (merge.getUsingTable() != null) { merge.getUsingTable().accept(this); }
-		 * else if (merge.getUsingSelect() != null) {
-		 * merge.getUsingSelect().accept((FromItemVisitor) this); }
-		 */
 	}
 
 }

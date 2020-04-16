@@ -1,6 +1,8 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -12,6 +14,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.WindowOffset;
 import net.sf.jsqlparser.expression.WindowRange;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
@@ -29,6 +32,7 @@ import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import net.sf.jsqlparser.statement.select.WithItem;
 
@@ -38,6 +42,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		return prefix.equals("") ? name : prefix + "_" + name;
 	}
 
+	private Schema schema;
 	private Graph<SelectBody, SubqueryEdge> graph;
 	private QueryExtractor qExtr;
 	private LinkedList<Select> queries;
@@ -45,20 +50,23 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	private ExprVisitor exprVisitor;
 	private PlainSelect tempBody;
 	private String tempPrefix;
+	private List<String> tmpSelectItems;
 
 	private HashMap<String, String> viewNamesMap;
 	private HashSet<String> ambiguousNames;
 
-	public QuerySimplifier(Graph<SelectBody, SubqueryEdge> depGraph, QueryExtractor qExtr) {
-		if (depGraph == null || qExtr == null) {
+	public QuerySimplifier(Schema schema, Graph<SelectBody, SubqueryEdge> depGraph, QueryExtractor qExtr) {
+		if (schema == null || depGraph == null || qExtr == null) {
 			throw new NullPointerException();
 		}
+		this.schema = schema;
 		this.graph = depGraph;
 		this.qExtr = qExtr;
 		this.queries = new LinkedList<>();
 		this.exprVisitor = new ExprVisitor();
 		this.tempBody = null;
 		this.tempPrefix = "";
+		this.tmpSelectItems = null;
 
 		this.viewNamesMap = new HashMap<>();
 		this.ambiguousNames = new HashSet<>();
@@ -77,6 +85,12 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			Select stmt = simplify(body);
 			PlainSelect newBody = (PlainSelect) stmt.getSelectBody();
 			LinkedList<WithItem> withItemsList = new LinkedList<>(findViewsOf(newBody, views));
+			Collections.sort(withItemsList, new Comparator<WithItem>() {
+				public int compare(WithItem w1, WithItem w2) {
+					// decreasing alphabetical order
+					return w2.getName().compareTo(w1.getName());
+				}
+			});
 			stmt.setWithItemsList(withItemsList);
 			queries.add(stmt);
 		}
@@ -217,7 +231,20 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		tempPrefix = viewName;
 		tempBody = new PlainSelect();
 		viewBody.accept(this);
+		if (tempBody.getSelectItems() == null) {
+			if (tmpSelectItems != null && !tmpSelectItems.isEmpty()) {
+				for (String s : tmpSelectItems) {
+					Column col = new Column(s);
+					tempBody.addSelectItems(new SelectExpressionItem(col));
+				}
+			} else {
+				StringValue sv = new StringValue("ciao");
+				SelectExpressionItem item = new SelectExpressionItem(sv);
+				tempBody.addSelectItems(item);
+			}
+		}
 		view.setSelectBody(tempBody);
+		tmpSelectItems = null;
 		tempBody = null;
 		tempPrefix = "";
 		return view;
@@ -229,7 +256,20 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		tempPrefix = "";
 		tempBody = new PlainSelect();
 		body.accept(this);
+		if (tempBody.getSelectItems() == null) {
+			if (tmpSelectItems != null && !tmpSelectItems.isEmpty()) {
+				for (String s : tmpSelectItems) {
+					Column col = new Column(s);
+					tempBody.addSelectItems(new SelectExpressionItem(col));
+				}
+			} else {
+				StringValue sv = new StringValue("ciao");
+				SelectExpressionItem item = new SelectExpressionItem(sv);
+				tempBody.addSelectItems(item);
+			}
+		}
 		sel.setSelectBody(tempBody);
+		tmpSelectItems = null;
 		tempBody = null;
 		tempPrefix = "";
 		return sel;
@@ -300,6 +340,11 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		if (join.isWindowJoin()) {
 			newJ.setJoinWindow(join.getJoinWindow());
 		}
+	}
+
+	@Override
+	public void visit(SetOperationList setOpList) {
+		tmpSelectItems = new PredicateFinder(schema).getPredicate(setOpList).getAttributes();
 	}
 
 	// FromItem
@@ -458,7 +503,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			if (expr.getKeep() != null) {
 				expr.getKeep().accept(this);
 			}
-			// TODO this is a problem in the adapter
+			// this is a problem in the adapter
 			if (expr.getOrderByElements() != null) {
 				for (OrderByElement element : expr.getOrderByElements()) {
 					element.getExpression().accept(this);

@@ -13,6 +13,7 @@ import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SelectBody;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectItemVisitor;
@@ -50,6 +51,33 @@ public class PredicateFinder implements FromItemVisitor, SelectVisitor, SelectIt
 		return pred;
 	}
 
+	public PredicateDefinition getPredicate(PlainSelect plainSelect) {
+		name = "";
+		attributes = new LinkedList<>();
+		fromItems = new LinkedList<>();
+		plainSelect.accept(this);
+		pred = new PredicateDefinition(name, attributes);
+		return pred;
+	}
+
+	public PredicateDefinition getPredicate(SetOperationList setOpList) {
+		PlainSelect ps = findPlainSelect(setOpList);
+		return getPredicate(ps);
+	}
+
+	private PlainSelect findPlainSelect(SetOperationList setOpList) {
+		for (SelectBody sb : setOpList.getSelects()) {
+			if (sb instanceof PlainSelect) {
+				return (PlainSelect) sb;
+			} else if (sb instanceof SetOperationList) {
+				return findPlainSelect((SetOperationList) sb);
+			}
+		}
+		return null;
+	}
+
+	// FromItemVisitor
+
 	@Override
 	public void visit(Table tableName) {
 		name = tableName.getName();
@@ -61,39 +89,29 @@ public class PredicateFinder implements FromItemVisitor, SelectVisitor, SelectIt
 		if (subSelect.getAlias() != null) {
 			name = subSelect.getAlias().getName();
 		}
-		// TODO assuming there are no views
+		// assuming there are no views
 		fromItems.clear();
 		subSelect.getSelectBody().accept(this);
 	}
 
 	@Override
 	public void visit(SubJoin subjoin) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(LateralSubSelect lateralSubSelect) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(ValuesList valuesList) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(TableFunction tableFunction) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(ParenthesisFromItem aThis) {
-		// TODO Auto-generated method stub
-
 	}
 
 	// SelectVisitor
@@ -119,20 +137,14 @@ public class PredicateFinder implements FromItemVisitor, SelectVisitor, SelectIt
 
 	@Override
 	public void visit(SetOperationList setOpList) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(WithItem withItem) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void visit(ValuesStatement aThis) {
-		// TODO Auto-generated method stub
-
 	}
 
 	// SelectItemVisitor

@@ -65,7 +65,7 @@ public class MainExtractSQL {
 						printGraph(depGraph);
 						System.out.println();
 
-						QuerySimplifier qs = new QuerySimplifier(depGraph, qExtr);
+						QuerySimplifier qs = new QuerySimplifier(schema, depGraph, qExtr);
 						List<Select> queries = qs.getSimpleQueries();
 						for (Select query : queries) {
 							System.out.println(query);

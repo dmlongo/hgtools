@@ -16,6 +16,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
@@ -158,6 +159,15 @@ public class Util {
 			copy.add(e);
 		}
 		return copy;
+	}
+	
+	public static String getTableAliasName(Table table) {
+		String tableAliasName;
+		if (table.getAlias() != null)
+			tableAliasName = table.getAlias().getName();
+		else
+			tableAliasName = table.getName();
+		return tableAliasName;
 	}
 	
 }

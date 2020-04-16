@@ -306,7 +306,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(AllColumns allColumns) {
-		for (FromItem item : resolver.getCurrentTables()) {
+		for (Table item : resolver.getCurrentTables()) {
 			PredicateDefinition p = new PredicateFinder(schema).getPredicate(item);
 			resolver.addNamesToParentScope(p.getAttributes());
 			if (resolver.isTopLevel()) {
@@ -426,25 +426,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	public void visit(SubSelect subSelect) {
 		// I can come here only from a FROM, right?
 		// For the SELECT I go through SelectExpressionItem
-		throwException("SUBSELECT STRANA\n" + subSelect); // TODO
-
-		if (subSelect.getWithItemsList() != null) {
-			if (subSelect.getWithItemsList() != null) {
-				// TODO where do the views go? there's no artificial view here
-				tmpViews = subSelect.getWithItemsList();
-			}
-		}
-		if (subSelect.getAlias() != null) {
-			resolver.addNameToCurrentScope(subSelect.getAlias().getName());
-		}
-		SelectBody parent = resolver.getCurrentSelect();
-		SelectBody child = subSelect.getSelectBody();
-		query.addVertex(child);
-		query.addEdge(parent, child); // TODO qui non creo l'arco. Why?
-		boolean inSetOpList = child instanceof SetOperationList;
-		resolver.enterNewScope(child, inSetOpList);
-		child.accept(this);
-		resolver.exitCurrentScope();
+		throwException("Unexpected Subselect\n" + subSelect);
 	}
 
 	@Override
@@ -525,7 +507,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 				}
 
 				if (!leftTarget.equals(source) && !rightTarget.equals(source)) {
-					throwException("WEIRD EQUALSTO\n" + equalsTo); // TODO troviamo un caso ed esaminiamolo
+					throwException("Strange EqualsTo\n" + equalsTo);
 				}
 
 				break;
@@ -626,7 +608,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			if (expr.getKeep() != null) {
 				expr.getKeep().accept(this);
 			}
-			// TODO this is a problem in the adapter
+			// this is a problem in the adapter
 			if (expr.getOrderByElements() != null) {
 				for (OrderByElement element : expr.getOrderByElements()) {
 					element.getExpression().accept(this);
