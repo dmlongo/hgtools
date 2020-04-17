@@ -31,32 +31,54 @@ public class PredicateFinder implements FromItemVisitor, SelectVisitor, SelectIt
 	private Schema schema;
 	private String name;
 	private List<String> attributes;
-	private PredicateDefinition pred;
-
-	private List<FromItem> fromItems;
+	private LinkedList<FromItem> fromItems;
 
 	public PredicateFinder(Schema schema) {
 		if (schema == null) {
 			throw new NullPointerException();
 		}
 		this.schema = schema;
+
+		this.name = "";
+		this.attributes = new LinkedList<>();
+		this.fromItems = new LinkedList<>();
 	}
 
 	public PredicateDefinition getPredicate(FromItem fromItem) {
-		name = "";
-		attributes = new LinkedList<>();
-		fromItems = new LinkedList<>();
 		fromItem.accept(this);
-		pred = new PredicateDefinition(name, attributes);
+		PredicateDefinition pred = new PredicateDefinition(name, attributes);
+		resetState();
 		return pred;
 	}
 
 	public PredicateDefinition getPredicate(PlainSelect plainSelect) {
-		name = "";
-		attributes = new LinkedList<>();
-		fromItems = new LinkedList<>();
 		plainSelect.accept(this);
-		pred = new PredicateDefinition(name, attributes);
+		PredicateDefinition pred = new PredicateDefinition(name, attributes);
+		resetState();
+		return pred;
+	}
+
+	public PredicateDefinition getPredicate(WithItem view) {
+		PredicateDefinition pred = null;
+		name = view.getName();
+		SelectBody sb = view.getSelectBody();
+		if (sb instanceof PlainSelect) {
+			pred = getPredicate((PlainSelect) sb);
+		} else if (sb instanceof SetOperationList) {
+			pred = getPredicate((SetOperationList) sb);
+		} else {
+			sb.accept(this);
+			pred = new PredicateDefinition(name, attributes);
+			resetState();
+		}
+		if (view.getWithItemList() != null) {
+			int i = 0;
+			List<String> newAttributes = pred.getAttributes();
+			for (SelectItem item : view.getWithItemList()) {
+				newAttributes.set(i++, item.toString());
+			}
+			pred = new PredicateDefinition(view.getName(), newAttributes);
+		}
 		return pred;
 	}
 
@@ -74,6 +96,12 @@ public class PredicateFinder implements FromItemVisitor, SelectVisitor, SelectIt
 			}
 		}
 		return null;
+	}
+
+	private void resetState() {
+		name = "";
+		attributes.clear();
+		fromItems.clear();
 	}
 
 	// FromItemVisitor

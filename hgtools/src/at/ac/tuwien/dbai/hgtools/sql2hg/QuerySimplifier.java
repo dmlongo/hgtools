@@ -2,13 +2,17 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.jgrapht.Graph;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -84,16 +88,173 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		for (SelectBody body : selects) {
 			Select stmt = simplify(body);
 			PlainSelect newBody = (PlainSelect) stmt.getSelectBody();
-			LinkedList<WithItem> withItemsList = new LinkedList<>(findViewsOf(newBody, views));
-			Collections.sort(withItemsList, new Comparator<WithItem>() {
-				public int compare(WithItem w1, WithItem w2) {
-					// decreasing alphabetical order
-					return w2.getName().compareTo(w1.getName());
-				}
-			});
+			HashSet<WithItem> withItems = findViewsOf(newBody, views);
+			LinkedList<WithItem> withItemsList = sort(withItems);
+
+			/*
+			 * Collections.sort(withItemsList, new Comparator<WithItem>() { public int
+			 * compare(WithItem w1, WithItem w2) { // decreasing alphabetical order return
+			 * w2.getName().compareTo(w1.getName()); } });
+			 */
+
 			stmt.setWithItemsList(withItemsList);
 			queries.add(stmt);
 		}
+	}
+
+	private LinkedList<WithItem> sort(HashSet<WithItem> withItems) {
+		HashMap<String, WithItem> views = makeMap(withItems);
+		Graph<String, DefaultEdge> deps = makeDependencyGraph(views);
+		List<Graph<String, DefaultEdge>> comps = computeConnComps(deps);
+		List<Graph<String, DefaultEdge>> sortedComps = sortComponents(comps);
+		LinkedList<WithItem> res = new LinkedList<>();
+		for (Graph<String, DefaultEdge> g : sortedComps) {
+			LinkedList<String> dfs = reverseBFSAlphabeticalSort(g);
+			for (String vName : dfs) {
+				res.add(views.get(vName));
+			}
+		}
+		return res;
+	}
+
+	private HashMap<String, WithItem> makeMap(HashSet<WithItem> withItems) {
+		HashMap<String, WithItem> res = new HashMap<>();
+		for (WithItem v : withItems) {
+			res.put(v.getName(), v);
+		}
+		return res;
+	}
+
+	private Graph<String, DefaultEdge> makeDependencyGraph(HashMap<String, WithItem> views) {
+		Graph<String, DefaultEdge> res = new DefaultDirectedGraph<>(DefaultEdge.class);
+		for (WithItem v : views.values()) {
+			res.addVertex(v.getName());
+		}
+		for (WithItem v : views.values()) {
+			String src = v.getName();
+			LinkedList<String> children = dependenciesOf(v, views);
+			for (String dest : children) {
+				res.addEdge(src, dest);
+			}
+		}
+		return res;
+	}
+
+	private LinkedList<String> dependenciesOf(WithItem v, HashMap<String, WithItem> views) {
+		// views are already simplified: there are only tables in the from
+		LinkedList<String> res = new LinkedList<>();
+		PlainSelect ps = (PlainSelect) v.getSelectBody();
+		if (ps.getFromItem() != null) {
+			String t = ((Table) ps.getFromItem()).getName();
+			if (views.containsKey(t)) {
+				res.add(t);
+			}
+		}
+		if (ps.getJoins() != null) {
+			for (Join j : ps.getJoins()) {
+				String t = ((Table) j.getRightItem()).getName();
+				if (views.containsKey(t)) {
+					res.add(t);
+				}
+			}
+		}
+		return res;
+	}
+
+	private List<Graph<String, DefaultEdge>> computeConnComps(Graph<String, DefaultEdge> deps) {
+		List<Graph<String, DefaultEdge>> res = new LinkedList<>();
+		ConnectivityInspector<String, DefaultEdge> connInsp = new ConnectivityInspector<>(deps);
+		List<Set<String>> compSets = connInsp.connectedSets();
+		for (Set<String> cVertices : compSets) {
+			Graph<String, DefaultEdge> c = buildComponent(deps, cVertices);
+			res.add(c);
+		}
+		return res;
+	}
+
+	private Graph<String, DefaultEdge> buildComponent(Graph<String, DefaultEdge> deps, Set<String> cVertices) {
+		Graph<String, DefaultEdge> c = new DefaultDirectedGraph<>(DefaultEdge.class);
+		for (String v : cVertices) {
+			c.addVertex(v);
+		}
+		for (DefaultEdge e : deps.edgeSet()) {
+			String source = deps.getEdgeSource(e);
+			String dest = deps.getEdgeTarget(e);
+			if (cVertices.contains(source) && cVertices.contains(dest)) {
+				c.addEdge(source, dest);
+			}
+		}
+		return c;
+	}
+
+	private List<Graph<String, DefaultEdge>> sortComponents(List<Graph<String, DefaultEdge>> comps) {
+		HashMap<String, Graph<String, DefaultEdge>> compsMap = makeMap(comps);
+		LinkedList<String> roots = new LinkedList<>(compsMap.keySet());
+		Collections.sort(roots);
+		List<Graph<String, DefaultEdge>> res = new LinkedList<>();
+		for (String r : roots) {
+			res.add(compsMap.get(r));
+		}
+		return res;
+	}
+
+	private HashMap<String, Graph<String, DefaultEdge>> makeMap(List<Graph<String, DefaultEdge>> comps) {
+		HashMap<String, Graph<String, DefaultEdge>> res = new HashMap<>();
+		for (Graph<String, DefaultEdge> c : comps) {
+			String r = findRoots(c).getFirst();
+			res.put(r, c);
+		}
+		return res;
+	}
+
+	private LinkedList<String> findRoots(Graph<String, DefaultEdge> c) {
+		LinkedList<String> res = new LinkedList<>();
+		for (String s : c.vertexSet()) {
+			if (c.inDegreeOf(s) == 0) {
+				res.add(s);
+			}
+		}
+		if (res.isEmpty()) {
+			throw new RuntimeException("No roots in " + c);
+		}
+		Collections.sort(res); // alphabetical order
+		return res;
+	}
+
+	private LinkedList<String> reverseBFSAlphabeticalSort(Graph<String, DefaultEdge> g) {
+		LinkedList<String> res = new LinkedList<>();
+		LinkedList<String> roots = findRoots(g);
+		for (String r : roots) {
+			LinkedList<String> toVisit = new LinkedList<>();
+			HashSet<String> visited = new HashSet<>();
+			toVisit.addLast(r);
+			while (!toVisit.isEmpty()) {
+				String v = toVisit.removeFirst();
+				if (!visited.contains(v)) {
+					res.addFirst(v);
+					TreeSet<String> sortedChildren = new TreeSet<>();
+					Set<DefaultEdge> children = g.outgoingEdgesOf(v);
+					for (DefaultEdge e : children) {
+						sortedChildren.add(g.getEdgeTarget(e));
+					}
+					toVisit.addAll(sortedChildren);
+					visited.add(v);
+				}
+			}
+		}
+		return removeDuplicates(res);
+	}
+
+	private LinkedList<String> removeDuplicates(LinkedList<String> list) {
+		LinkedList<String> res = new LinkedList<>();
+		HashSet<String> seen = new HashSet<>();
+		for (String s : list) {
+			if (!seen.contains(s)) {
+				res.add(s);
+				seen.add(s);
+			}
+		}
+		return res;
 	}
 
 	private void collectViewNames() {

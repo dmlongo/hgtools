@@ -35,18 +35,18 @@ public class HypergraphBuilder {
 	public void buildEdge(Predicate table) {
 		if (table instanceof ViewPredicate) {
 			buildEdge((ViewPredicate) table);
-			return;
+		} else {
+			String tableAlias = table.getAlias();
+			Edge e = new Edge(tableAlias);
+			for (String attr : table) {
+				String var = "X" + nextVar++;
+				String col = getFullName(tableAlias, attr);
+				addMappings(col, var);
+				e.addVertex(var);
+				vars.addElement(var);
+			}
+			h.addEdge(e);
 		}
-		String tableAlias = table.getAlias();
-		Edge e = new Edge(tableAlias);
-		for (String attr : table) {
-			String var = "X" + nextVar++;
-			String col = getFullName(tableAlias, attr);
-			addMappings(col, var);
-			e.addVertex(var);
-			vars.addElement(var);
-		}
-		h.addEdge(e);
 	}
 
 	private void addMappings(String col, String var) {
@@ -90,7 +90,7 @@ public class HypergraphBuilder {
 		String var2 = colToVar.get(getFullName(viewAlias, col2));
 		vars.union(var1, var2);
 	}
-	
+
 	public Hypergraph getHypergraph() {
 		// System.out.println(vars);
 		for (Edge e : h.getEdges()) {

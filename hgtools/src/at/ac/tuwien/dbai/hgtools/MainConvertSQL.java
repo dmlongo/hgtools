@@ -59,6 +59,23 @@ public class MainConvertSQL {
 				String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
 				Statement stmt = CCJSqlParserUtil.parse(sqlString);
 				Select selectStmt = (Select) stmt;
+
+				// ViewPredicatesFinder vpf = new ViewPredicatesFinder();
+				// Collection<Predicate> viewPreds = vpf.getViewPredicates(selectStmt);
+				// ViewDefinitionsFinder vdf = new ViewDefinitionsFinder(schema, viewPreds,
+				// selectStmt);
+				// vdf.getUpdateSchema();
+				// CQFinder hgFinder = new CQFinder(schema);
+				// hgFinder.find(selectStmt);
+
+				/*
+				 * for (Predicate pred : viewPreds) { PredicateDefinition predDef =
+				 * pred.getPredicateDefinition(); if (pred instanceof BasePredicate) {
+				 * schema.addPredicateDefinition(predDef); } else if (pred instanceof
+				 * ViewPredicate) { schema.addPredicateDefinition(predDef, new
+				 * ViewPredicate(predDef)); } }
+				 */
+
 				ConjunctiveQueryFinder hgFinder = new ConjunctiveQueryFinder(schema);
 				hgFinder.run(selectStmt);
 
