@@ -11,3 +11,4 @@
 # instances
 *.sql
 *.tpl
+*.xml
