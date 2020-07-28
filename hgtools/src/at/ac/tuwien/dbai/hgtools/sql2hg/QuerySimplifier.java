@@ -15,13 +15,11 @@ import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
-import net.sf.jsqlparser.expression.AnalyticExpression;
+import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.StringValue;
-import net.sf.jsqlparser.expression.WindowOffset;
-import net.sf.jsqlparser.expression.WindowRange;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -29,7 +27,6 @@ import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
@@ -82,24 +79,33 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	}
 
 	private void run() {
-		collectViewNames();
-		HashMap<String, WithItem> views = collectAllViews();
+		collectViewNames(qExtr);
+		HashMap<String, WithItem> views = collectAllViews(qExtr);
 		HashSet<SelectBody> selects = findIndependentSelects(graph);
 		for (SelectBody body : selects) {
+			// QueryExtractor currExtr = findCurrentQExtr(qExtr, body);
+			// collectViewNames(currExtr);
+			// HashMap<String, WithItem> views = collectAllViews(currExtr);
 			Select stmt = simplify(body);
 			PlainSelect newBody = (PlainSelect) stmt.getSelectBody();
 			HashSet<WithItem> withItems = findViewsOf(newBody, views);
 			LinkedList<WithItem> withItemsList = sort(withItems);
-
-			/*
-			 * Collections.sort(withItemsList, new Comparator<WithItem>() { public int
-			 * compare(WithItem w1, WithItem w2) { // decreasing alphabetical order return
-			 * w2.getName().compareTo(w1.getName()); } });
-			 */
-
 			stmt.setWithItemsList(withItemsList);
 			queries.add(stmt);
 		}
+	}
+
+	private QueryExtractor findCurrentQExtr(QueryExtractor qExtr, SelectBody body) {
+		if (qExtr.getRoot() == body) {
+			return qExtr;
+		}
+		for (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
+			QueryExtractor res = findCurrentQExtr(vExtr, body);
+			if (res != null) {
+				return res;
+			}
+		}
+		return null;
 	}
 
 	private LinkedList<WithItem> sort(HashSet<WithItem> withItems) {
@@ -257,7 +263,10 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		return res;
 	}
 
-	private void collectViewNames() {
+	private void collectViewNames(QueryExtractor qExtr) {
+		viewNamesMap.clear();
+		ambiguousNames.clear();
+
 		LinkedList<QueryExtractor> toVisit = new LinkedList<>();
 		LinkedList<String> prefixes = new LinkedList<>();
 		HashSet<QueryExtractor> visited = new HashSet<>();
@@ -284,7 +293,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		}
 	}
 
-	private HashMap<String, WithItem> collectAllViews() {
+	private HashMap<String, WithItem> collectAllViews(QueryExtractor qExtr) {
 		HashMap<String, WithItem> views = new HashMap<>();
 		LinkedList<QueryExtractor> toVisit = new LinkedList<>();
 		LinkedList<String> prefixes = new LinkedList<>();
@@ -348,42 +357,33 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		return res;
 	}
 
-	private LinkedList<String> findViewsOf(SelectBody sel, QueryExtractor qExtr) {
-		if (qExtr.getSelectToViewMap().containsKey(sel)) {
-			LinkedList<String> res = expandViewsList(qExtr.getSelectToViewMap().get(sel), qExtr, new HashSet<>());
-			return res;
-		}
+	/*
+	 * private LinkedList<String> findViewsOf(SelectBody sel, QueryExtractor qExtr)
+	 * { if (qExtr.getSelectToViewMap().containsKey(sel)) { LinkedList<String> res =
+	 * expandViewsList(qExtr.getSelectToViewMap().get(sel), qExtr, new HashSet<>());
+	 * return res; }
+	 * 
+	 * // order-dependent - same select in different branches = problem for
+	 * (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
+	 * LinkedList<String> res = findViewsOf(sel, vExtr); if (res != null) { return
+	 * res; } } return new LinkedList<String>(); }
+	 */
 
-		// order-dependent - same select in different branches = problem
-		for (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
-			LinkedList<String> res = findViewsOf(sel, vExtr);
-			if (res != null) {
-				return res;
-			}
-		}
-		return new LinkedList<String>();
-	}
-
-	private LinkedList<String> expandViewsList(LinkedList<String> toExpand, QueryExtractor qExtr,
-			HashSet<String> visited) {
-		HashSet<String> resSet = new HashSet<>(toExpand);
-
-		LinkedList<String> toVisit = new LinkedList<>(resSet);
-		while (!toVisit.isEmpty()) {
-			String view = toVisit.removeFirst();
-			if (!visited.contains(view)) {
-				visited.add(view);
-
-				QueryExtractor vExtr = qExtr.getViewToGraphMap().get(view);
-				SelectBody vBody = vExtr.getRoot();
-				LinkedList<String> newRes = findViewsOf(vBody, vExtr);
-
-				resSet.addAll(newRes);
-				toVisit.addAll(newRes);
-			}
-		}
-		return new LinkedList<String>(resSet);
-	}
+	/*
+	 * private LinkedList<String> expandViewsList(LinkedList<String> toExpand,
+	 * QueryExtractor qExtr, HashSet<String> visited) { HashSet<String> resSet = new
+	 * HashSet<>(toExpand);
+	 * 
+	 * LinkedList<String> toVisit = new LinkedList<>(resSet); while
+	 * (!toVisit.isEmpty()) { String view = toVisit.removeFirst(); if
+	 * (!visited.contains(view)) { visited.add(view);
+	 * 
+	 * QueryExtractor vExtr = qExtr.getViewToGraphMap().get(view); SelectBody vBody
+	 * = vExtr.getRoot(); LinkedList<String> newRes = findViewsOf(vBody, vExtr);
+	 * 
+	 * resSet.addAll(newRes); toVisit.addAll(newRes); } } return new
+	 * LinkedList<String>(resSet); }
+	 */
 
 	private WithItem simplify(SelectBody viewBody, String viewName) {
 		exprVisitor.reset();
@@ -414,7 +414,10 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	private Select simplify(SelectBody body) {
 		exprVisitor.reset();
 		Select sel = new Select();
-		tempPrefix = "";
+		tempPrefix = qExtr.getPrefixes().get(body);
+		if (tempPrefix == null) {
+			throw new NullPointerException();
+		}
 		tempBody = new PlainSelect();
 		body.accept(this);
 		if (tempBody.getSelectItems() == null) {
@@ -608,12 +611,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 
 	// ExprVisitor
 
-	private class ExprVisitor extends ExpressionVisitorAdapter {
-		// TODO might consider to set a SelectVisitor
-		// invece conviene non averlo cosi si saltano le subselect
-
-		// TODO manca la gestone di AND, OR e altri operatori di confronto
-
+	private class ExprVisitor extends ExpressionVisitorAdapterFixed {
 		private ArrayList<EqualsTo> eqs = new ArrayList<>();
 
 		public Expression getExpression() {
@@ -651,42 +649,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		}
 
 		@Override
-		public void visit(AnalyticExpression expr) {
-			if (expr.getExpression() != null) {
-				expr.getExpression().accept(this);
-			}
-			if (expr.getDefaultValue() != null) {
-				expr.getDefaultValue().accept(this);
-			}
-			if (expr.getOffset() != null) {
-				expr.getOffset().accept(this);
-			}
-			if (expr.getKeep() != null) {
-				expr.getKeep().accept(this);
-			}
-			// this is a problem in the adapter
-			if (expr.getOrderByElements() != null) {
-				for (OrderByElement element : expr.getOrderByElements()) {
-					element.getExpression().accept(this);
-				}
-			}
-
-			if (expr.getWindowElement() != null) {
-				WindowRange range = expr.getWindowElement().getRange();
-				if (range != null) {
-					if (range.getStart() != null && range.getStart().getExpression() != null) {
-						range.getStart().getExpression().accept(this);
-					}
-					if (range.getEnd() != null && range.getEnd().getExpression() != null) {
-						range.getEnd().getExpression().accept(this);
-					}
-				}
-
-				WindowOffset offset = expr.getWindowElement().getOffset();
-				if (offset != null && offset.getExpression() != null) {
-					offset.getExpression().accept(this);
-				}
-			}
+		public void visit(OrExpression expr) {
 		}
 	}
 

@@ -11,16 +11,13 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
+import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import at.ac.tuwien.dbai.hgtools.util.NameStack;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.AnyComparisonExpression;
 import net.sf.jsqlparser.expression.AnyType;
-import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.NotExpression;
-import net.sf.jsqlparser.expression.WindowOffset;
-import net.sf.jsqlparser.expression.WindowRange;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
@@ -32,7 +29,6 @@ import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
-import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PivotXml;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -49,6 +45,10 @@ import net.sf.jsqlparser.statement.select.ValuesList;
 import net.sf.jsqlparser.statement.select.WithItem;
 
 public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
+
+	private static String makeName(String prefix, String name) {
+		return prefix.equals("") ? name : prefix + "_" + name;
+	}
 
 	private static String getTableAliasName(Table table) {
 		String tableAliasName;
@@ -80,7 +80,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private HashMap<SelectBody, LinkedList<String>> selectToViewMap;
 	private HashMap<String, QueryExtractor> viewToGraphMap;
 	private LinkedList<SelectItem> viewSelectItems;
-	
+
+	private String basePrefix;
+	private HashMap<SelectBody, String> prefixes;
+
 	private HashSet<String> viewsDefinedHere;
 
 	private List<WithItem> tmpViews;
@@ -97,6 +100,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		selectToViewMap = new HashMap<>();
 		viewToGraphMap = new HashMap<>();
 		viewSelectItems = new LinkedList<>();
+
+		basePrefix = "";
+		prefixes = new HashMap<>();
 
 		viewsDefinedHere = new HashSet<>();
 
@@ -117,6 +123,27 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			HashMap<String, QueryExtractor> viewToGraphMap, LinkedList<SelectItem> viewSelItems) {
 		this(schema, nameToViewMap, viewToGraphMap);
 		this.viewSelectItems = viewSelItems;
+	}
+
+	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
+			HashMap<String, QueryExtractor> viewToGraphMap, String currPrefix, HashMap<SelectBody, String> prefixes) {
+		this(schema, nameToViewMap, viewToGraphMap);
+		if (currPrefix == null || prefixes == null) {
+			throw new NullPointerException();
+		}
+		this.basePrefix = currPrefix;
+		this.prefixes = prefixes; // aliasing - top qExtr will have all the names
+	}
+
+	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
+			HashMap<String, QueryExtractor> viewToGraphMap, LinkedList<SelectItem> viewSelItems, String currPrefix,
+			HashMap<SelectBody, String> prefixes) {
+		this(schema, nameToViewMap, viewToGraphMap, viewSelItems);
+		if (currPrefix == null || prefixes == null) {
+			throw new NullPointerException();
+		}
+		this.basePrefix = currPrefix;
+		this.prefixes = prefixes; // aliasing - top qExtr will have all the names
 	}
 
 	// TODO can be called only once, otherwise reset the state
@@ -147,9 +174,13 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	public List<SelectItem> getViewSelectItems() {
 		return viewSelectItems;
 	}
-	
+
 	public Set<String> getViewsDefinedHere() {
 		return Collections.unmodifiableSet(viewsDefinedHere);
+	}
+
+	public HashMap<SelectBody, String> getPrefixes() {
+		return prefixes;
 	}
 
 	@Override
@@ -189,7 +220,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		Select body = new Select();
 		body.setWithItemsList(withItemsList);
 		body.setSelectBody(withItem.getSelectBody());
-		QueryExtractor qe = new QueryExtractor(schema, nameToViewMap, viewToGraphMap, viewSelItems);
+		prefixes.put(withItem.getSelectBody(), makeName(basePrefix, viewName));
+		QueryExtractor qe = new QueryExtractor(schema, nameToViewMap, viewToGraphMap, viewSelItems,
+				makeName(basePrefix, viewName), prefixes);
 		qe.run(body);
 		for (String gName : qe.getGlobalNames()) {
 			if (numWithItems <= 0) {
@@ -292,8 +325,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	@Override
 	public void visit(SetOperationList setOpList) {
 		// no matter what the operator is - I just want the subqueries
+		SelectBody parent = resolver.getCurrentSelect();
 		for (SelectBody child : setOpList.getSelects()) {
-			SelectBody parent = resolver.getCurrentSelect();
+			prefixes.put(child, basePrefix); // TODO not sure about the prefix here
 			query.addVertex(child);
 			query.addEdge(parent, child, new SubqueryEdge(SubqueryEdge.Operator.OTHER, false));
 			resolver.enterNewScope(child, true);
@@ -465,6 +499,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		}
 
 		SelectBody body = select.getSelectBody();
+		prefixes.put(body, basePrefix);
 		root = body;
 		query.addVertex(body);
 		boolean inSetOpList = body instanceof SetOperationList;
@@ -475,7 +510,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	// Helper classes
 
-	private class ExprVisitor extends ExpressionVisitorAdapter {
+	private class ExprVisitor extends ExpressionVisitorAdapterFixed {
 		private SubqueryEdge currEdge;
 
 		public ExprVisitor(SelectVisitor sv) {
@@ -576,6 +611,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			}
 			SelectBody parent = resolver.getCurrentSelect();
 			SelectBody child = subSelect.getSelectBody();
+			prefixes.put(child, basePrefix);
 			query.addVertex(child);
 			query.addEdge(parent, child, currEdge);
 			currEdge = new SubqueryEdge(SubqueryEdge.Operator.OTHER, false);
@@ -592,45 +628,6 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		@Override
 		public void visit(PivotXml pivot) {
 			throwException(pivot);
-		}
-
-		@Override
-		public void visit(AnalyticExpression expr) {
-			if (expr.getExpression() != null) {
-				expr.getExpression().accept(this);
-			}
-			if (expr.getDefaultValue() != null) {
-				expr.getDefaultValue().accept(this);
-			}
-			if (expr.getOffset() != null) {
-				expr.getOffset().accept(this);
-			}
-			if (expr.getKeep() != null) {
-				expr.getKeep().accept(this);
-			}
-			// this is a problem in the adapter
-			if (expr.getOrderByElements() != null) {
-				for (OrderByElement element : expr.getOrderByElements()) {
-					element.getExpression().accept(this);
-				}
-			}
-
-			if (expr.getWindowElement() != null) {
-				WindowRange range = expr.getWindowElement().getRange();
-				if (range != null) {
-					if (range.getStart() != null && range.getStart().getExpression() != null) {
-						range.getStart().getExpression().accept(this);
-					}
-					if (range.getEnd() != null && range.getEnd().getExpression() != null) {
-						range.getEnd().getExpression().accept(this);
-					}
-				}
-
-				WindowOffset offset = expr.getWindowElement().getOffset();
-				if (offset != null && offset.getExpression() != null) {
-					offset.getExpression().accept(this);
-				}
-			}
 		}
 	}
 

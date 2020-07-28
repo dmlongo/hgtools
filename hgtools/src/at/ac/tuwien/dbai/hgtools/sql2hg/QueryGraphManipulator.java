@@ -133,8 +133,10 @@ public class QueryGraphManipulator {
 			if (selectToViewMap.containsKey(select)) {
 				for (String viewName : selectToViewMap.get(select)) {
 					Graph<Integer, SubqueryEdge> view = viewToGraphMap.get(viewName);
-					List<SelectBody> vIntToSelList = viewToIntMapping.get(viewName);
-					expandGraph(select, pRes, intToSelList, selToIntMap, view, vIntToSelList);
+					if (view != null) {
+						List<SelectBody> vIntToSelList = viewToIntMapping.get(viewName);
+						expandGraph(select, pRes, intToSelList, selToIntMap, view, vIntToSelList);
+					}
 				}
 			}
 		}

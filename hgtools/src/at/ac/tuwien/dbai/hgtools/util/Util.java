@@ -8,10 +8,19 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
+import at.ac.tuwien.dbai.hgtools.hypergraph.Edge;
+import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import net.sf.jsqlparser.JSQLParserException;
@@ -125,7 +134,52 @@ public class Util {
 		Files.write(Paths.get(newFile), toFile(query), Charset.forName("UTF-8"));
 	}
 
-	private static Iterable<String> toFile(Select query) {
+	public static void writeToFile(String filename, Statement query) throws IOException {
+		Path path = Paths.get(filename);
+		// Files.createDirectories(path.getParent());
+		if (!Files.exists(path))
+			Files.createFile(path);
+		Files.write(Paths.get(filename), toFile(query), Charset.forName("UTF-8"));
+	}
+
+	public static void writeToFile(String filename, Schema schema) throws IOException {
+		Path path = Paths.get(filename);
+		// Files.createDirectories(path.getParent());
+		if (!Files.exists(path))
+			Files.createFile(path);
+		Files.write(Paths.get(filename), toFile(schema), Charset.forName("UTF-8"));
+	}
+
+	private static Iterable<String> toFile(Schema schema) {
+		LinkedList<String> res = new LinkedList<>();
+		for (PredicateDefinition p : schema) {
+			StringBuilder sb = new StringBuilder(200);
+			sb.append("CREATE TABLE ");
+			sb.append(p.getName());
+			sb.append('(');
+			sb.append('\n');
+			Iterator<String> it = p.getAttributes().iterator();
+			while (it.hasNext()) {
+				String attr = it.next();
+				sb.append('\t');
+				sb.append(attr);
+				sb.append('\t');
+				sb.append("int");
+				if (it.hasNext()) {
+					sb.append(',');
+				}
+				sb.append('\n');
+			}
+			sb.append(')');
+			sb.append(';');
+			sb.append('\n');
+			sb.append('\n');
+			res.add(sb.toString());
+		}
+		return res;
+	}
+
+	private static Iterable<String> toFile(Statement query) {
 		LinkedList<String> res = new LinkedList<String>();
 		res.add(query.toString());
 		return res;
@@ -160,7 +214,7 @@ public class Util {
 		}
 		return copy;
 	}
-	
+
 	public static String getTableAliasName(Table table) {
 		String tableAliasName;
 		if (table.getAlias() != null)
@@ -169,5 +223,184 @@ public class Util {
 			tableAliasName = table.getName();
 		return tableAliasName;
 	}
-	
+
+	public static void loadSimpleMap(HashMap<String, String> map, String file, boolean keyToLowerCase,
+			boolean valueToLowerCase) {
+		try (Stream<String> stream = Files.lines(Paths.get(file))) {
+			stream.forEach(new Consumer<String>() {
+				@Override
+				public void accept(String s) {
+					ArrayList<String> tks = splitCSVLine(s);
+					if (tks.size() != 2) {
+						String fError = "Error in file: " + file + "\n";
+						String lError = "Wrong line: " + s + "\n";
+						String tError = "tks= " + tks;
+						throw new RuntimeException(fError + lError + tError);
+					}
+					String tab = tks.get(0);
+					if (keyToLowerCase) {
+						tab = tab.toLowerCase();
+					}
+					if (map.containsKey(tab)) {
+						throw new RuntimeException(tab + " already present in map");
+					}
+					String val = tks.get(1);
+					if (valueToLowerCase) {
+						val = val.toLowerCase();
+					}
+					map.put(tab, val);
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static ArrayList<String> splitCSVLine(String line) {
+		ArrayList<String> tks = new ArrayList<>();
+		boolean inQuotes = false;
+		int start = 0;
+		for (int i = 0; i < line.length(); i++) {
+			if (line.charAt(i) == '"') {
+				inQuotes = !inQuotes;
+			} else if (!inQuotes && line.charAt(i) == ';') {
+				String tk = line.substring(start, i);
+				tks.add(tk);
+				start = i + 1;
+			}
+		}
+		tks.add(line.substring(start));
+		return tks;
+	}
+
+	public static void loadSimpleMap(HashMap<String, String> map, String file) {
+		loadSimpleMap(map, file, false, false);
+	}
+
+	public static void loadListMap(HashMap<String, LinkedList<String>> map, String file, boolean keyToLowerCase,
+			boolean valueToLowerCase) {
+		try (Stream<String> stream = Files.lines(Paths.get(file))) {
+			stream.forEach(new Consumer<String>() {
+				@Override
+				public void accept(String s) {
+					ArrayList<String> tks = splitCSVLine(s);
+					String tab = tks.get(0);
+					if (keyToLowerCase) {
+						tab = tab.toLowerCase();
+					}
+					if (!map.containsKey(tab)) {
+						map.put(tab, new LinkedList<>());
+					}
+					for (String tk : tks) {
+						String val = tk;
+						if (valueToLowerCase) {
+							val = val.toLowerCase();
+						}
+						map.get(tab).add(val);
+					}
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void loadListMap(HashMap<String, LinkedList<String>> map, String file) {
+		loadListMap(map, file, false, false);
+	}
+
+	public static <T> Set<T> setDifference(Set<T> set1, Set<T> set2) {
+		HashSet<T> res = new HashSet<>();
+		res.addAll(set1);
+		res.retainAll(set2);
+		return res;
+	}
+
+	public static <T> Set<T> setIntersection(Set<T> set1, Set<T> set2) {
+		HashSet<T> res = new HashSet<>();
+		for (T el : set1) {
+			if (set2.contains(el)) {
+				res.add(el);
+			}
+		}
+		return res;
+	}
+
+	public static boolean isContained(PredicateDefinition p1, PredicateDefinition p2) {
+		boolean flag = true;
+		for (String attr : p1) {
+			if (!(p2.existsAttribute(attr) || p2.existsAttribute(addQuote(attr)))) {
+				flag = false;
+				break;
+			}
+		}
+		return flag;
+	}
+
+	public static PredicateDefinition getPred(Set<PredicateDefinition> preds, String name) {
+		for (PredicateDefinition p : preds) {
+			if (p.getName().equals(name)) {
+				return p;
+			}
+		}
+		return null;
+	}
+
+	public static boolean isCovered(String c, Set<PredicateDefinition> preds) {
+		for (PredicateDefinition p : preds) {
+			if (p.existsAttribute(c) || p.existsAttribute(addQuote(c))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static String addQuote(String s) {
+		StringBuilder sb = new StringBuilder(s.length() + 2);
+		sb.append('"');
+		for (int i = 0; i < s.length(); i++) {
+			if (s.charAt(i) != '"') {
+				sb.append(s.charAt(i));
+			}
+		}
+		sb.append('"');
+		return sb.toString();
+	}
+
+	public static Hypergraph hypergraphFromFile(File file) throws IOException {
+		Hypergraph h = new Hypergraph();
+		for (String edge : getEdgeList(file)) {
+			int idStart = edge.indexOf('(');
+			int idEnd = edge.indexOf(')');
+			String edgeName = edge.substring(0, idStart);
+			String vars = edge.substring(idStart + 1, idEnd);
+			Edge e = new Edge(edgeName, vars.split(","));
+			h.addEdge(e);
+		}
+		return h;
+	}
+
+	private static List<String> getEdgeList(File file) throws IOException {
+		String hg = String.join("", Files.readAllLines(file.toPath()));
+		//System.out.println(hg);
+		
+		ArrayList<String> tks = new ArrayList<>();
+		boolean inPar = false;
+		int start = 0;
+		for (int i = 0; i < hg.length(); i++) {
+			if (hg.charAt(i) == '(') {
+				inPar = true;
+			} else if (hg.charAt(i) == ')') {
+				inPar = false;
+			} else if (!inPar && hg.charAt(i) == ',') {
+				String tk = hg.substring(start, i);
+				tks.add(tk);
+				start = i + 1;
+			}
+		}
+		tks.add(hg.substring(start));
+		
+		return tks;
+	}
+
 }

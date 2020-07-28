@@ -18,6 +18,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
+import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -59,6 +60,10 @@ public class MainConvertSQL {
 				String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
 				Statement stmt = CCJSqlParserUtil.parse(sqlString);
 				Select selectStmt = (Select) stmt;
+
+				// make name lower case
+				ToLowerCaseTransformer lc = new ToLowerCaseTransformer();
+				lc.run(selectStmt);
 
 				// ViewPredicatesFinder vpf = new ViewPredicatesFinder();
 				// Collection<Predicate> viewPreds = vpf.getViewPredicates(selectStmt);

@@ -13,6 +13,7 @@ import at.ac.tuwien.dbai.hgtools.util.CombinationIterator;
 import at.ac.tuwien.dbai.hgtools.util.PowerSetIterator;
 
 public class Hypergraph {
+
 	private Set<Edge> edges;
 	private Set<String> vertices;
 
@@ -101,6 +102,18 @@ public class Hypergraph {
 		}
 
 		return maxDegree;
+	}
+
+	public int arity() {
+		int maxArity = 0;
+
+		for (Edge e : edges) {
+			int arity = e.getVertices().size();
+			if (arity > maxArity)
+				maxArity = arity;
+		}
+
+		return maxArity;
 	}
 
 	public int cntBip(int k) {

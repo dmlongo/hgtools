@@ -8,7 +8,7 @@ public interface Predicate extends Iterable<String> {
 	PredicateDefinition getPredicateDefinition();
 
 	String getPredicateName();
-	
+
 	int arity();
 
 	void setAlias(String alias);

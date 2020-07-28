@@ -61,15 +61,15 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 	@Override
 	public void defineAttribute(String viewAttr, String defPred, String defAttr) {
 		if (!existsAttribute(viewAttr)) {
-			throw new IllegalArgumentException(alias + "." + viewAttr + " does not exists.");
+			throw new IllegalArgumentException(alias + SEP + viewAttr + " does not exists.");
 		}
 		if (!definingPredicates.containsKey(defPred)) {
 			throw new IllegalArgumentException(defPred + " is not a defining predicate.");
 		}
 		if (!definingPredicates.get(defPred).existsAttribute(defAttr)) {
-			throw new IllegalArgumentException(defPred + "." + defAttr + " does not exists.");
+			throw new IllegalArgumentException(defPred + SEP + defAttr + " does not exists.");
 		}
-		String attrMap = defPred + "." + defAttr;
+		String attrMap = defPred + SEP + defAttr;
 		definingAttributes.put(viewAttr, attrMap);
 	}
 
@@ -77,15 +77,15 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 	public String getDefiningAttribute(String viewAttr) {
 		// TODO Auto-generated method stub
 		if (definingAttributes.get(viewAttr) == null) {
-			throw new IllegalArgumentException(alias + "." + viewAttr + " does not exist.");
+			throw new IllegalArgumentException(alias + SEP + viewAttr + " does not exist.");
 		}
 		String result = definingAttributes.get(viewAttr);
-		int dot = result.indexOf('.');
-		String defPredName = result.substring(0, dot);
-		String defAttrName = result.substring(dot + 1);
+		int sep = result.indexOf(SEP);
+		String defPredName = result.substring(0, sep);
+		String defAttrName = result.substring(sep + 1);
 		Predicate defPredicate = definingPredicates.get(defPredName);
 		// TODO maybe use a StringBuilder to avoid wasting memory
-		return alias + "." + defPredicate.getDefiningAttribute(defAttrName);
+		return alias + SEP + defPredicate.getDefiningAttribute(defAttrName);
 	}
 
 	@Override
@@ -94,10 +94,10 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 			throw new IllegalArgumentException("The predicates do not exist.");
 		}
 		if (!definingPredicates.get(pred1).existsAttribute(attr1)) {
-			throw new IllegalArgumentException(pred1 + "." + attr1 + " do not exist.");
+			throw new IllegalArgumentException(pred1 + SEP + attr1 + " do not exist.");
 		}
 		if (!definingPredicates.get(pred2).existsAttribute(attr2)) {
-			throw new IllegalArgumentException(pred2 + "." + attr2 + " do not exist.");
+			throw new IllegalArgumentException(pred2 + SEP + attr2 + " do not exist.");
 		}
 		Predicate p1 = definingPredicates.get(pred1);
 		Predicate p2 = definingPredicates.get(pred2);

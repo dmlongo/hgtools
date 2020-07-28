@@ -8,6 +8,8 @@ import java.util.List;
 
 public class SimplePredicate implements Predicate {
 
+	public final static String SEP = "_";
+
 	protected PredicateDefinition definition;
 	protected String alias;
 	protected HashSet<String> attrNames;

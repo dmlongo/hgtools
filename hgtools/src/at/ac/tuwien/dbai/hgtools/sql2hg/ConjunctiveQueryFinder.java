@@ -9,7 +9,9 @@ import java.util.Set;
 
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -55,6 +57,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	private HashSet<Predicate> tables;
 	private HashSet<Equality> joins;
 
+	private PlainSelect tmpPS;
+
 	private LinkedList<ConjunctiveQuery> cqs;
 
 	public ConjunctiveQueryFinder(Schema schema) {
@@ -71,6 +75,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 		tables = new HashSet<>();
 		joins = new HashSet<>();
+
+		tmpPS = null;
 
 		cqs = new LinkedList<>();
 
@@ -114,6 +120,7 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	@Override
 	public void visit(PlainSelect plainSelect) {
 		nResolver.enterNewScope();
+		tmpPS = plainSelect;
 
 		if (plainSelect.getFromItem() == null) {
 			currentState = ParsingState.READING_VIEW_SETOPLIST;
@@ -200,6 +207,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		if (plainSelect.getOracleHierarchical() != null) {
 			plainSelect.getOracleHierarchical().accept(this);
 		}
+
+		tmpPS = null;
 		nResolver.exitCurrentScope();
 	}
 
@@ -238,10 +247,23 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 	@Override
 	public void visit(AllColumns allColumns) {
+		PredicateDefinition pd = new PredicateFinder(schema).getPredicate(tmpPS);
+		for (String attr : pd.getAttributes()) {
+			SelectExpressionItem item = new SelectExpressionItem();
+			item.setExpression(new Column(attr));
+			selExprItBuffer.add(item);
+		}
 	}
 
 	@Override
 	public void visit(AllTableColumns allTableColumns) {
+		String table = allTableColumns.getTable().getName();
+		PredicateDefinition pd = schema.getPredicateDefinition(table);
+		for (String attr : pd.getAttributes()) {
+			SelectExpressionItem item = new SelectExpressionItem();
+			item.setExpression(new Column(attr));
+			selExprItBuffer.add(item);
+		}
 	}
 
 	@Override
@@ -274,6 +296,16 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	}
 
 	// ExpressionVisitor - assuming only AND and equalities in here
+
+	@Override
+	public void visit(AndExpression expr) {
+		visitBinaryExpression(expr);
+	}
+
+	private void visitBinaryExpression(BinaryExpression expr) {
+		expr.getLeftExpression().accept(this);
+		expr.getRightExpression().accept(this);
+	}
 
 	@Override
 	public void visit(EqualsTo equalsTo) {

@@ -13,14 +13,15 @@ public class BasePredicate extends SimplePredicate implements Predicate {
 	public BasePredicate(BasePredicate pred) {
 		super(pred);
 	}
-	
+
 	@Override
 	public String getDefiningAttribute(String viewAttr) {
-		// TODO should I connect viewAttr (presumably aliased) to the original attribute?
+		// TODO should I connect viewAttr (presumably aliased) to the original
+		// attribute?
 		if (!existsAttribute(viewAttr)) {
-			throw new IllegalArgumentException(alias + "." + viewAttr + " does not exists.");
+			throw new IllegalArgumentException(alias + SEP + viewAttr + " does not exists.");
 		}
-		return alias + "." + viewAttr;
+		return alias + SEP + viewAttr;
 	}
 
 }

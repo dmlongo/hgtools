@@ -12,66 +12,46 @@ import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 
 public class HypergraphBuilder {
 
+	public final static String SEP = "_";
+
 	private static String getFullName(String table, String col) {
-		return table + "." + col;
+		return table.equals("") ? col : table + SEP + col;
 	}
 
 	private Hypergraph h;
 	private int nextVar;
 	private HashMap<String, String> colToVar;
-	// private HashMap<String, List<String>> varToCol;
 	private UnionFind<String> vars;
 
 	public HypergraphBuilder() {
 		h = new Hypergraph();
 		nextVar = 0;
 		colToVar = new HashMap<>();
-		// varToCol = new HashMap<>();
 		vars = new UnionFind<String>(new HashSet<String>());
 	}
 
-	// TODO views are not considered :(
-	// for each defining predicate add a new edge
 	public void buildEdge(Predicate table) {
-		if (table instanceof ViewPredicate) {
-			buildEdge((ViewPredicate) table);
-		} else {
-			String tableAlias = table.getAlias();
-			Edge e = new Edge(tableAlias);
+		buildEdge(table, "");
+	}
+
+	private void buildEdge(Predicate table, String prefix) {
+		if (table instanceof BasePredicate) {
+			String tableFullName = getFullName(prefix, table.getAlias());
+			Edge e = new Edge(tableFullName);
 			for (String attr : table) {
 				String var = "X" + nextVar++;
-				String col = getFullName(tableAlias, attr);
-				addMappings(col, var);
+				String col = getFullName(tableFullName, attr);
+				colToVar.put(col, var);
 				e.addVertex(var);
 				vars.addElement(var);
 			}
 			h.addEdge(e);
-		}
-	}
-
-	private void addMappings(String col, String var) {
-		colToVar.put(col, var);
-		// if (varToCol.get(var) == null) {
-		// varToCol.put(var, new LinkedList<>());
-		// }
-		// varToCol.get(var).add(col);
-	}
-
-	public void buildEdge(ViewPredicate table) {
-		String tableAlias = table.getAlias();
-		for (Predicate pred : table.getDefiningPredicates()) {
-			String predCompleteName = getFullName(tableAlias, pred.getAlias());
-			// TODO pred could be a view and its name should be
-			// prolonged even more
-			Edge e = new Edge(predCompleteName);
-			for (String attr : pred) {
-				String var = "X" + nextVar++;
-				String col = getFullName(predCompleteName, attr);
-				addMappings(col, var);
-				e.addVertex(var);
-				vars.addElement(var);
+		} else {
+			ViewPredicate vPred = (ViewPredicate) table;
+			String newPrefix = getFullName(prefix, vPred.getAlias());
+			for (Predicate pred : vPred.getDefiningPredicates()) {
+				buildEdge(pred, newPrefix);
 			}
-			h.addEdge(e);
 		}
 	}
 
@@ -96,7 +76,9 @@ public class HypergraphBuilder {
 		for (Edge e : h.getEdges()) {
 			for (String v : e.getVertices()) {
 				String newName = vars.find(v);
-				e.renameVertex(v, newName);
+				if (!e.renameVertex(v, newName)) {
+					throw new RuntimeException("Vertex " + newName + " already exists.");
+				}
 			}
 		}
 		return h;

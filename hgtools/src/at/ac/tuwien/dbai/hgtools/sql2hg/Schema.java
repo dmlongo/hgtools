@@ -27,6 +27,9 @@ public class Schema implements Iterable<PredicateDefinition> {
 		if (predDef == null) {
 			throw new NullPointerException();
 		}
+		if (definitions.containsKey(predDef.getName())) {
+			throw new IllegalArgumentException(predDef.getName() + " is already in this schema!");
+		}
 		definitions.put(predDef.getName(), predDef);
 		stubs.put(predDef, new BasePredicate(predDef));
 	}
@@ -72,12 +75,29 @@ public class Schema implements Iterable<PredicateDefinition> {
 	}
 
 	public boolean isViewPredicate(String name) {
-		return viewNames.contains(name);
+		return viewNames.contains(name.toLowerCase());
 	}
-	
+
 	@Override
 	public Iterator<PredicateDefinition> iterator() {
 		return definitions.values().iterator();
 	}
 
+	public int numPredicates() {
+		return definitions.size();
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(500);
+		Iterator<String> it = definitions.keySet().iterator();
+		while (it.hasNext()) {
+			sb.append(definitions.get(it.next()));
+			if (it.hasNext()) {
+				sb.append('\n');
+			}
+		}
+		return sb.toString();
+	}
+	
 }

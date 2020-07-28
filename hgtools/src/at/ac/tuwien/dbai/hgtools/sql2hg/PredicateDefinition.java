@@ -16,8 +16,8 @@ import java.util.List;
  */
 public class PredicateDefinition implements Iterable<String> {
 
-	private String name;
-	private HashMap<Attribute, Attribute> attributes;
+	protected String name;
+	protected HashMap<Attribute, Attribute> attributes;
 
 	public PredicateDefinition(String name, Collection<String> attributes) {
 		if (name == null) {

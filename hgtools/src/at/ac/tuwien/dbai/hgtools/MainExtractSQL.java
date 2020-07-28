@@ -9,6 +9,7 @@ import org.jgrapht.Graph;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
+import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryGraphManipulator;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QuerySimplifier;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
@@ -56,6 +57,10 @@ public class MainExtractSQL {
 				Statements stmts = CCJSqlParserUtil.parseStatements(sqlString);
 				int nextID = 0;
 				for (Statement stmt : stmts.getStatements()) {
+					// make name lower case
+					ToLowerCaseTransformer lc = new ToLowerCaseTransformer();
+					lc.run(stmt);
+					
 					QueryExtractor qExtr = processStatement(stmt, schema);
 					QueryGraphManipulator manip = new QueryGraphManipulator(qExtr);
 
