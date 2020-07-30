@@ -106,8 +106,8 @@ public class MainConvertSQL {
 				Hypergraph h = hgBuilder.getHypergraph();
 				HashMap<String, List<String>> map = hgBuilder.getVarToColMapping();
 				// System.out.println();
-				System.out.println(map);
-				System.out.println();
+				// System.out.println(map);
+				// System.out.println();
 				System.out.println(h);
 
 				String newFile = file.getAbsolutePath();

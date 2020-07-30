@@ -1,7 +1,6 @@
 package at.ac.tuwien.dbai.hgtools.hypergraph;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
 import at.ac.tuwien.dbai.hgtools.util.Util;
@@ -52,34 +51,19 @@ public class Edge {
 	public List<String> getVertices() {
 		return vertices;
 	}
-/*
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == this) {
-			return true;
-		}
-		if (!(obj instanceof Edge)) {
-			return false;
-		}
-		Edge oth = (Edge) obj;
-		if (this.vertices.size() != oth.vertices.size()) {
-			return false;
-		}
-		HashSet<String> myEdges = new HashSet<>(vertices);
-		HashSet<String> othEdges = new HashSet<>();
-		for (String v : myEdges) {
-			if (!othEdges.contains(v)) {
-				return false;
-			}
-		}
-		return true;
-	}
 
-	@Override
-	public int hashCode() {
-		return new HashSet<>(vertices).hashCode();
-	}
-*/
+	/*
+	 * @Override public boolean equals(Object obj) { if (obj == this) { return true;
+	 * } if (!(obj instanceof Edge)) { return false; } Edge oth = (Edge) obj; if
+	 * (this.vertices.size() != oth.vertices.size()) { return false; }
+	 * HashSet<String> myEdges = new HashSet<>(vertices); HashSet<String> othEdges =
+	 * new HashSet<>(); for (String v : myEdges) { if (!othEdges.contains(v)) {
+	 * return false; } } return true; }
+	 * 
+	 * @Override public int hashCode() { return new HashSet<>(vertices).hashCode();
+	 * }
+	 */
+	
 	public String toString() {
 		String s = "";
 

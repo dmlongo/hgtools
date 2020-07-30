@@ -60,21 +60,21 @@ public class MainExtractSQL {
 					// make name lower case
 					ToLowerCaseTransformer lc = new ToLowerCaseTransformer();
 					lc.run(stmt);
-					
+
 					QueryExtractor qExtr = processStatement(stmt, schema);
 					QueryGraphManipulator manip = new QueryGraphManipulator(qExtr);
 
-					System.out.println("\n\nDepGraphs:");
+					// System.out.println("\n\nDepGraphs:");
 					List<Graph<SelectBody, SubqueryEdge>> graphs = manip.computeDependencyGraphsSimplified();
 					for (Graph<SelectBody, SubqueryEdge> depGraph : graphs) {
-						printGraph(depGraph);
-						System.out.println();
+						// printGraph(depGraph);
+						// System.out.println();
 
 						QuerySimplifier qs = new QuerySimplifier(schema, depGraph, qExtr);
 						List<Select> queries = qs.getSimpleQueries();
 						for (Select query : queries) {
-							System.out.println(query);
-							System.out.println();
+							// System.out.println(query);
+							// System.out.println();
 							Util.writeToFile(file, query, outDir, nextID++, queries.size());
 						}
 					}
@@ -84,7 +84,7 @@ public class MainExtractSQL {
 	}
 
 	private static QueryExtractor processStatement(Statement stmt, Schema schema) {
-		System.out.println("STATEMENT " + stmt);
+		// System.out.println("STATEMENT " + stmt);
 
 		Select selectStmt = (Select) stmt;
 		QueryExtractor qExtr = new QueryExtractor(schema);
@@ -95,31 +95,23 @@ public class MainExtractSQL {
 		for (SelectBody v : query.vertexSet()) {
 			vertices.add(v);
 		}
-		printGraph(query, vertices);
-		System.out.println();
+		// printGraph(query, vertices);
+		// System.out.println();
 
-		// globalNames
-		System.out.println("globalNames:");
-		for (String gName : qExtr.getGlobalNames()) {
-			System.out.println(gName);
-		}
-		System.out.println();
-
-		// selectToViewMap
-		System.out.println("selectToViewMap:");
-		for (SelectBody sel : qExtr.getSelectToViewMap().keySet()) {
-			int iSel = vertices.indexOf(sel);
-			System.out.println("" + iSel + " -> " + qExtr.getSelectToViewMap().get(sel));
-		}
-		System.out.println();
-
-		// viewToGraphMap
-		System.out.println("viewToGraphMap:");
-		for (String view : qExtr.getViewToGraphMap().keySet()) {
-			System.out.println(view);
-			printGraph(qExtr.getViewToGraphMap().get(view).getQueryStructure());
-			System.out.println();
-		}
+		/*
+		 * // globalNames System.out.println("globalNames:"); for (String gName :
+		 * qExtr.getGlobalNames()) { System.out.println(gName); } System.out.println();
+		 * 
+		 * // selectToViewMap System.out.println("selectToViewMap:"); for (SelectBody
+		 * sel : qExtr.getSelectToViewMap().keySet()) { int iSel =
+		 * vertices.indexOf(sel); System.out.println("" + iSel + " -> " +
+		 * qExtr.getSelectToViewMap().get(sel)); } System.out.println();
+		 * 
+		 * // viewToGraphMap System.out.println("viewToGraphMap:"); for (String view :
+		 * qExtr.getViewToGraphMap().keySet()) { System.out.println(view);
+		 * printGraph(qExtr.getViewToGraphMap().get(view).getQueryStructure());
+		 * System.out.println(); }
+		 */
 
 		return qExtr;
 	}
