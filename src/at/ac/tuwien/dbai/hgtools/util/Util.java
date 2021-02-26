@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -107,7 +107,7 @@ public class Util {
 	 * @return A stringified String
 	 */
 	public static String stringify(String s) {
-		String newS = new String(s);
+		String newS = s;
 
 		newS = newS.replace('[', 'L');
 		newS = newS.replace(']', 'J');
@@ -131,7 +131,7 @@ public class Util {
 		Files.createDirectories(newFilePath.getParent());
 		if (!Files.exists(newFilePath))
 			Files.createFile(newFilePath);
-		Files.write(Paths.get(newFile), toFile(query), Charset.forName("UTF-8"));
+		Files.write(Paths.get(newFile), toFile(query), StandardCharsets.UTF_8);
 	}
 
 	public static void writeToFile(String filename, Statement query) throws IOException {
@@ -139,7 +139,7 @@ public class Util {
 		// Files.createDirectories(path.getParent());
 		if (!Files.exists(path))
 			Files.createFile(path);
-		Files.write(Paths.get(filename), toFile(query), Charset.forName("UTF-8"));
+		Files.write(Paths.get(filename), toFile(query), StandardCharsets.UTF_8);
 	}
 
 	public static void writeToFile(String filename, Schema schema) throws IOException {
@@ -147,7 +147,16 @@ public class Util {
 		// Files.createDirectories(path.getParent());
 		if (!Files.exists(path))
 			Files.createFile(path);
-		Files.write(Paths.get(filename), toFile(schema), Charset.forName("UTF-8"));
+		Files.write(Paths.get(filename), toFile(schema), StandardCharsets.UTF_8);
+	}
+
+	public static void writeQueriesToFile(File file, List<Select> queries, String outDir, int nextID)
+			throws IOException {
+		for (Select query : queries) {
+			// System.out.println(query);
+			// System.out.println();
+			Util.writeToFile(file, query, outDir, nextID++, queries.size());
+		}
 	}
 
 	private static Iterable<String> toFile(Schema schema) {
@@ -382,8 +391,8 @@ public class Util {
 
 	private static List<String> getEdgeList(File file) throws IOException {
 		String hg = String.join("", Files.readAllLines(file.toPath()));
-		//System.out.println(hg);
-		
+		// System.out.println(hg);
+
 		ArrayList<String> tks = new ArrayList<>();
 		boolean inPar = false;
 		int start = 0;
@@ -399,7 +408,7 @@ public class Util {
 			}
 		}
 		tks.add(hg.substring(start));
-		
+
 		return tks;
 	}
 

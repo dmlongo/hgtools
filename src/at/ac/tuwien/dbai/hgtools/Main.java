@@ -1,71 +1,64 @@
 package at.ac.tuwien.dbai.hgtools;
 
-import java.util.Arrays;
+import java.time.Duration;
+import java.time.Instant;
 
 public class Main {
 
+	static final String STATS = "-stats";
+	static final String CONVERT = "-convert";
+	static final String EXTRACT = "-extract";
+	static final String TRANSLATE = "-translate";
+
+	static final String SQL = "-sql";
+	static final String XCSP = "-xcsp";
+	static final String HG = "-hg";
+
+	static final String H2P = "-hg2pace";
+
 	public static void main(String[] args) throws Exception {
-		String type = args[0];
-		for (int i = 0; i < args.length - 1; i++)
-			args[i] = args[i + 1];
-		if (type.equals("-sql")) {
-			MainSQL.main(Arrays.copyOf(args, args.length - 1));
-		} else if (type.equals("-csp")) {
-			MainCSP.main(Arrays.copyOf(args, args.length - 1));
-		} else if (type.equals("-convert")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-sql")) {
-				MainConvertSQL.main(Arrays.copyOf(args, args.length - 2));
-			} else if (format.equals("-csp")) {
-				MainConvertCSP.main(Arrays.copyOf(args, args.length - 2));
+		String action = args[0];
+		String type = args[1];
+		// Instant start = Instant.now();
+		if (action.equals(STATS)) {
+			if (!type.equals(SQL) && !type.equals(XCSP) && !type.equals(HG)) {
+				throw new UnsupportedCommandException(type);
 			}
-		} else if (type.equals("-extract")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-sql")) {
-				MainExtractSQL.main(Arrays.copyOf(args, args.length - 2));
-			} else if (format.equals("-csp")) {
-				// MainConvertCSP.main(Arrays.copyOf(args, args.length - 2));
+			MainStats.main(type, args, 2);
+		} else if (action.equals(CONVERT)) {
+			if (!type.equals(SQL) && !type.equals(XCSP)) {
+				throw new UnsupportedCommandException(type);
 			}
-		} else if (type.equals("-translate")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-h2p")) {
-				MainTranslateHbToPace.main(Arrays.copyOf(args, args.length - 2));
+			Instant start = Instant.now();
+			MainConvert.main(type, args, 2);
+			Instant finish = Instant.now();
+			System.out.println("time= " + Duration.between(start, finish).toMillis() + "ms");
+		} else if (action.equals(EXTRACT)) {
+			if (!type.equals(SQL)) {
+				throw new UnsupportedCommandException(type);
 			}
-		} else if (type.equals("-makeQuery")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-sql")) {
-				MainMakeQuery.main(Arrays.copyOf(args, args.length - 2));
+			MainExtract.main(type, args, 2);
+		} else if (action.equals(TRANSLATE)) {
+			if (!type.equals(H2P)) {
+				throw new UnsupportedCommandException(type);
 			}
-		} else if (type.equals("-countStmts")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-sql")) {
-				MainCountStmts.main(Arrays.copyOf(args, args.length - 2));
-			}
-		} else if (type.equals("-checkParser")) {
-			String format = args[0];
-			for (int i = 0; i < args.length - 1; i++)
-				args[i] = args[i + 1];
-			if (format.equals("-sql")) {
-				MainCheckParser.main(Arrays.copyOf(args, args.length - 2));
-			}
-		} else if (type.equals("-stats")) {
-			MainStats.main(Arrays.copyOf(args, args.length - 1));
-		} else if (type.equals("-mergeStats")) {
-			MainMergeStats.main(Arrays.copyOf(args, args.length - 1));
-		} else if (type.equals("-checkTable")) {
-			MainCheckTable.main(Arrays.copyOf(args, args.length - 1));
-		} else if (type.equals("-makeStatsTable")) {
-			MainMakeStatsTable.main(Arrays.copyOf(args, args.length - 1));
+			MainTranslate.main(type, args, 2);
+		} else {
+			throw new UnsupportedCommandException(action);
+		}
+		// Instant finish = Instant.now();
+		// System.out.println(Duration.between(start, finish).toMillis());
+	}
+
+	static class UnsupportedCommandException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+
+		public UnsupportedCommandException() {
+			super();
+		}
+
+		public UnsupportedCommandException(String string) {
+			super("Unkown command: " + string);
 		}
 	}
 

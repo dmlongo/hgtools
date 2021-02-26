@@ -11,12 +11,20 @@ import java.nio.file.Paths;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Edge;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 
-public class MainTranslateHbToPace {
+public class MainTranslate {
 
-	public static void main(String[] args) {
+	public static void main(String type, String[] args, int z) {
+		if (type.equals(Main.H2P)) {
+			translateHgToPace(args[z]);
+		} else {
+			throw new Main.UnsupportedCommandException(type);
+		}
+	}
+
+	private static void translateHgToPace(String p) {
 		Hypergraph hg = new Hypergraph();
 
-		Path path = Paths.get(args[0]);
+		Path path = Paths.get(p);
 		Charset charset = Charset.defaultCharset();
 		try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
 			String line = null;
@@ -30,9 +38,10 @@ public class MainTranslateHbToPace {
 			}
 		} catch (IOException e) {
 			System.err.format("IOException: %s%n", e);
+			System.exit(1);
 		}
 
-		String outFile = args[0].substring(0, args[0].indexOf('.')) + ".pace";
+		String outFile = p.substring(0, p.indexOf('.')) + ".pace";
 		path = Paths.get(outFile);
 		try (BufferedWriter writer = Files.newBufferedWriter(path, charset)) {
 			for (String s : hg.toPaceFile()) {
@@ -40,6 +49,7 @@ public class MainTranslateHbToPace {
 			}
 		} catch (IOException e) {
 			System.err.format("IOException: %s%n", e);
+			System.exit(1);
 		}
 	}
 

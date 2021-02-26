@@ -6,6 +6,10 @@
 /hypergraphs/
 /instances/
 /schemas/
+/examples/
+/output/
 
 .classpath
 .project
+
+.vscode/

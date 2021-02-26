@@ -21,20 +21,25 @@ import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 
-public class MainExtractSQL {
+public class MainExtract {
+
+	private static String type;
 
 	private static int skipS = 0;
 	private static int skipE = 0;
 	private static String outDir = "output";
 
-	public static void main(String[] args) throws JSQLParserException, IOException {
-		args = setOtherArgs(args);
+	private static Schema schema;
 
-		Schema schema = new Schema();
-		String schemaString = Util.readSQLFile(args[0]);
+	public static void main(String type, String[] args, int z) throws JSQLParserException, IOException {
+		MainExtract.type = type;
+		z = setOtherArgs(args, z);
+
+		schema = new Schema();
+		String schemaString = Util.readSQLFile(args[z++]);
 		Util.readSQLPredicateDefinitions(schemaString, schema);
 
-		for (int i = 1; i < args.length; i++) {
+		for (int i = z; i < args.length; i++) {
 			File file = new File(args[i]);
 			File[] files;
 			if (file.isDirectory()) {
@@ -43,16 +48,16 @@ public class MainExtractSQL {
 				files = new File[1];
 				files[0] = file;
 			}
-			processFiles(files, schema);
+			processFiles(files);
 		}
 	}
 
-	private static void processFiles(File[] files, Schema schema) throws JSQLParserException, IOException {
+	private static void processFiles(File[] files) throws JSQLParserException, IOException {
 		for (File file : files) {
 			if (file.isDirectory()) {
 				// System.out.println("Directory: " + file.getName());
-				processFiles(file.listFiles(), schema); // Calls same method again.
-			} else if (Util.isSQLFile(file.getName())) {
+				processFiles(file.listFiles()); // Calls same method again.
+			} else if (isFileTypeOk(file)) {
 				String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
 				Statements stmts = CCJSqlParserUtil.parseStatements(sqlString);
 				int nextID = 0;
@@ -72,11 +77,7 @@ public class MainExtractSQL {
 
 						QuerySimplifier qs = new QuerySimplifier(schema, depGraph, qExtr);
 						List<Select> queries = qs.getSimpleQueries();
-						for (Select query : queries) {
-							// System.out.println(query);
-							// System.out.println();
-							Util.writeToFile(file, query, outDir, nextID++, queries.size());
-						}
+						Util.writeQueriesToFile(file, queries, outDir, nextID);
 					}
 				}
 			}
@@ -146,24 +147,30 @@ public class MainExtractSQL {
 		}
 	}
 
-	private static String[] setOtherArgs(String[] args) {
-		while (args[0].startsWith("-")) {
-			String cmd = args[0];
+	private static boolean isFileTypeOk(File file) {
+		if (type.equals(Main.SQL)) {
+			return Util.isSQLFile(file.getName());
+		} else {
+			return false;
+		}
+	}
+
+	private static int setOtherArgs(String[] args, int z) {
+		while (args[z].startsWith("-")) {
+			String cmd = args[z];
 			switch (cmd) {
-			case "-skip":
-				skipS = Integer.parseInt(args[1]);
-				skipE = Integer.parseInt(args[2]);
-				args = Util.shiftLeftResize(args, 3);
-				break;
-			case "-out":
-				outDir = args[1];
-				args = Util.shiftLeftResize(args, 2);
-				break;
-			default:
-				throw new RuntimeException("Unknown command: " + cmd);
+				case "-skip":
+					skipS = Integer.parseInt(args[z++]);
+					skipE = Integer.parseInt(args[z++]);
+					break;
+				case "-out":
+					outDir = args[z++];
+					break;
+				default:
+					throw new Main.UnsupportedCommandException(cmd);
 			}
 		}
-		return args;
+		return z;
 	}
 
 }
