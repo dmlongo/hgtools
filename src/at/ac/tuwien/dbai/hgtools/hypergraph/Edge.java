@@ -1,6 +1,7 @@
 package at.ac.tuwien.dbai.hgtools.hypergraph;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import at.ac.tuwien.dbai.hgtools.util.Util;
@@ -12,15 +13,19 @@ public class Edge {
 
 	public Edge(String name) {
 		this.name = name;
-		vertices = new ArrayList<String>(200);
+		vertices = new ArrayList<>(200);
 	}
 
-	public Edge(String name, String[] strings) {
+	public Edge(String name, String s) {
 		this.name = name;
-		vertices = new ArrayList<String>(strings.length);
-		for (String s : strings) {
-			vertices.add(s);
-		}
+		vertices = new ArrayList<>(1);
+		vertices.add(s);
+	}
+
+	public Edge(String name, String... strings) {
+		this.name = name;
+		vertices = new ArrayList<>(strings.length);
+		Collections.addAll(vertices, strings);
 	}
 
 	public String getName() {
@@ -63,7 +68,7 @@ public class Edge {
 	 * @Override public int hashCode() { return new HashSet<>(vertices).hashCode();
 	 * }
 	 */
-	
+
 	public String toString() {
 		String s = "";
 
