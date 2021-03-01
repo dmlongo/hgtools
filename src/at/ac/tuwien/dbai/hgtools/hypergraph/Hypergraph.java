@@ -41,15 +41,16 @@ public class Hypergraph {
 
 	@Override
 	public String toString() {
-		String s = "";
+		StringBuilder sb = new StringBuilder(200);
 		for (String line : toFile()) {
-			s += line + System.getProperty("line.separator");
+			sb.append(line);
+			sb.append(System.getProperty("line.separator"));
 		}
-		return s;
+		return sb.toString();
 	}
 
 	public List<String> toFile() {
-		List<String> out = new LinkedList<String>();
+		List<String> out = new LinkedList<>();
 		for (Iterator<Edge> it = edges.iterator(); it.hasNext();) {
 			String e = it.next().toString();
 			if (it.hasNext())
@@ -120,14 +121,12 @@ public class Hypergraph {
 		int maxBip = 0;
 
 		if (k <= edges.size()) {
-			CombinationIterator<Edge> cit = new CombinationIterator<Edge>(edges, k);
+			CombinationIterator<Edge> cit = new CombinationIterator<>(edges, k);
 			while (cit.hasNext()) {
 				Collection<Edge> subset = cit.next();
-				HashSet<String> inter = new HashSet<String>();
-
 				Iterator<Edge> it = subset.iterator();
 				Edge e = it.next();
-				inter = new HashSet<String>(e.getVertices());
+				HashSet<String> inter = new HashSet<>(e.getVertices());
 
 				while (it.hasNext()) {
 					inter.retainAll(it.next().getVertices());
@@ -151,11 +150,11 @@ public class Hypergraph {
 
 			// For each subset X of size vc check if it is shattered, if X is shattered then
 			// vc is at least i
-			CombinationIterator<String> cit = new CombinationIterator<String>(vertices, i);
+			CombinationIterator<String> cit = new CombinationIterator<>(vertices, i);
 			while (cit.hasNext() && !shattered) {
 				boolean checkX = true;
 				Collection<String> setX = cit.next();
-				PowerSetIterator<String> itPSetX = new PowerSetIterator<String>(setX);
+				PowerSetIterator<String> itPSetX = new PowerSetIterator<>(setX);
 
 				// For each A \subseteq X check if there is an edge s.t. A = X \cap e
 				// if there is a subset such that this check fails (checkX = false), then X is
@@ -165,7 +164,7 @@ public class Hypergraph {
 					boolean edgeFound = false;
 
 					for (Iterator<Edge> it = edges.iterator(); it.hasNext() && !edgeFound;) {
-						Collection<String> helpX = new ArrayList<String>(setX);
+						Collection<String> helpX = new ArrayList<>(setX);
 						helpX.retainAll(it.next().getVertices());
 						if (helpX.size() == psetX.size() && helpX.containsAll(psetX)) {
 							edgeFound = true;

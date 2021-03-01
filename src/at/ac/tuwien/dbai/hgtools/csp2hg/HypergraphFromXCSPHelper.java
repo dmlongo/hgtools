@@ -5,9 +5,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.xcsp.common.Condition;
 import org.xcsp.common.Types.TypeArithmeticOperator;
 import org.xcsp.common.Types.TypeConditionOperatorRel;
 import org.xcsp.common.Types.TypeFlag;
+import org.xcsp.common.Types.TypeRank;
 import org.xcsp.parser.callbacks.XCallbacks2;
 import org.xcsp.parser.entries.XVariables.XVarInteger;
 
@@ -53,10 +55,6 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		return Arrays.stream((XVarInteger[]) vars).map(x -> mapVar.get(x)).toArray(String[]::new);
 	}
 
-	private String[][] trVars2D(Object vars) {
-		return Arrays.stream((XVarInteger[][]) vars).map(t -> trVars(t)).toArray(String[][]::new);
-	}
-
 	@Override
 	public void buildCtrExtension(String id, XVarInteger[] list, int[][] tuples, boolean positive,
 			Set<TypeFlag> flags) {
@@ -64,9 +62,13 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 			throw new ShortTableException();
 		}
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
-			throw new UncleanTuplesException();
+			cleanTuples(list, tuples);
 		}
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+	}
+
+	private void cleanTuples(XVarInteger[] list, int[][] tuples) {
+		// TODO
 	}
 
 	@Override
@@ -75,9 +77,13 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 			throw new ShortTableException();
 		}
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
-			throw new UncleanTuplesException();
+			cleanTuples(x, values);
 		}
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x)));
+	}
+
+	private void cleanTuples(XVarInteger x, int[] values) {
+		// TODO
 	}
 
 	@Override
@@ -97,11 +103,35 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y), trVar(z)));
 	}
 
+	@Override
+	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, int p,
+			TypeConditionOperatorRel op, XVarInteger y) {
+		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y)));
+	}
+
 	// TODO implement buildCtrIntension for all kinds of intensional constraints
 
 	@Override
 	public void buildCtrAllDifferent(String id, XVarInteger[] list) {
 		// TODO there are many ways to represent an AllDiff constraint
+		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+	}
+
+	@Override
+	public void buildCtrElement(String id, XVarInteger[] list, int startIndex, XVarInteger index, TypeRank rank,
+			Condition condition) {
+		Edge e = new Edge("E" + ++iEdge, trVars(list));
+		e.addVertex(trVar(index));
+		hg.addEdge(e);
+	}
+
+	@Override
+	public void buildCtrSum(String id, XVarInteger[] list, Condition condition) {
+		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+	}
+
+	@Override
+	public void buildCtrSum(String id, XVarInteger[] list, int[] coeffs, Condition condition) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
 	}
 

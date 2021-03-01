@@ -34,6 +34,10 @@ import net.sf.jsqlparser.statement.select.Select;
 
 public class Util {
 
+	private Util() {
+		throw new IllegalStateException("Utility class");
+	}
+
 	public static String readSQLFile(String fName, int skipStart, int skipEnd) {
 		List<String> lines = new LinkedList<>();
 		StringBuilder sb = new StringBuilder(500);
@@ -189,7 +193,7 @@ public class Util {
 	}
 
 	private static Iterable<String> toFile(Statement query) {
-		LinkedList<String> res = new LinkedList<String>();
+		LinkedList<String> res = new LinkedList<>();
 		res.add(query.toString());
 		return res;
 	}
@@ -216,12 +220,25 @@ public class Util {
 		return prefix + id;
 	}
 
-	public static <T> LinkedList<T> deepCopy(List<T> list) {
+	public static <T> List<T> deepCopy(List<T> list) {
 		LinkedList<T> copy = new LinkedList<>();
 		for (T e : list) {
 			copy.add(e);
 		}
 		return copy;
+	}
+
+	public static void print(Object... objs) {
+		for (Object o : objs) {
+			if (o instanceof Object[]) {
+				System.out.println(Arrays.toString((Object[]) o));
+			} else if (o instanceof int[]) {
+				System.out.println(Arrays.toString((int[]) o));
+			} else {
+				System.out.println(o);
+			}
+		}
+		System.out.println();
 	}
 
 	public static String getTableAliasName(Table table) {

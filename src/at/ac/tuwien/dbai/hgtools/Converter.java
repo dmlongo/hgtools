@@ -6,8 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,7 +27,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.Select;
 
-public class MainConvert {
+public class Converter {
 
     private static String type;
 
@@ -39,8 +37,12 @@ public class MainConvert {
 
     private static Schema schema;
 
-    public static void main(String type, String[] args, int z) throws Exception {
-        MainConvert.type = type;
+    private Converter() {
+        throw new IllegalStateException("Utility class");
+    }
+
+    public static void convert(String type, String[] args, int z) throws Exception {
+        Converter.type = type;
         if (type.equals(Main.SQL)) {
             z = setOtherArgs(args, z);
 
@@ -65,7 +67,6 @@ public class MainConvert {
     public static void processFiles(File[] files) throws Exception {
         for (File file : files) {
             if (file.isDirectory()) {
-                // System.out.println("Directory: " + file.getName());
                 processFiles(file.listFiles()); // Calls same method again.
             } else if (isFileTypeOk(file)) {
                 if (type.equals(Main.SQL)) {
@@ -144,18 +145,19 @@ public class MainConvert {
     }
 
     private static void convertXCSP(File file) throws Exception {
-        // System.out.println("+ Converting: " + file.getPath());
-        // System.out.println("++ Read");
+        if (Main.verbose) {
+            System.out.println("+ Converting: " + file.getPath());
+            System.out.println("++ Read");
+        }
 
-        Instant start = Instant.now();
         HypergraphFromXCSPHelper csp2hg = new HypergraphFromXCSPHelper(file.getPath());
-        Instant finish = Instant.now();
-        System.out.println("time= " + Duration.between(start, finish).toMillis() + "ms");
         Hypergraph h = csp2hg.getHypergraph();
 
-        // System.out.println("++ Output");
+        if (Main.verbose) {
+            System.out.println("++ Output");
+        }
         String newFile = file.getPath();
-        newFile = "output/" + newFile.substring(0, newFile.lastIndexOf(".")) + ".hg";
+        newFile = outDir + File.separator + newFile.substring(0, newFile.lastIndexOf(".")) + ".hg";
 
         Path newFilePath = Paths.get(newFile);
         Files.createDirectories(newFilePath.getParent());
