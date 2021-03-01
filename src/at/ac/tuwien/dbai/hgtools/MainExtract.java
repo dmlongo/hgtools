@@ -157,7 +157,7 @@ public class MainExtract {
 
 	private static int setOtherArgs(String[] args, int z) {
 		while (args[z].startsWith("-")) {
-			String cmd = args[z];
+			String cmd = args[z++];
 			switch (cmd) {
 				case "-skip":
 					skipS = Integer.parseInt(args[z++]);

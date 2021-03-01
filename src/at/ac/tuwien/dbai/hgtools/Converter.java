@@ -43,9 +43,9 @@ public class Converter {
 
     public static void convert(String type, String[] args, int z) throws Exception {
         Converter.type = type;
-        if (type.equals(Main.SQL)) {
-            z = setOtherArgs(args, z);
+        z = setOtherArgs(args, z);
 
+        if (type.equals(Main.SQL)) {
             schema = new Schema();
             String schemaString = Util.readSQLFile(args[z++]);
             Util.readSQLPredicateDefinitions(schemaString, schema);
@@ -178,7 +178,7 @@ public class Converter {
 
     private static int setOtherArgs(String[] args, int z) {
         while (args[z].startsWith("-")) {
-            String cmd = args[z];
+            String cmd = args[z++];
             switch (cmd) {
                 case "-skip":
                     skipS = Integer.parseInt(args[z++]);

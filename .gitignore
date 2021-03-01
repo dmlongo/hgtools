@@ -8,6 +8,7 @@
 /schemas/
 /examples/
 /output/
+/wrkdir/
 
 .classpath
 .project
