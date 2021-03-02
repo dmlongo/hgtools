@@ -5,14 +5,14 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
 import at.ac.tuwien.dbai.hgtools.util.CombinationIterator;
 import at.ac.tuwien.dbai.hgtools.util.PowerSetIterator;
+import at.ac.tuwien.dbai.hgtools.util.Writable;
 
-public class Hypergraph {
+public class Hypergraph implements Writable {
 
 	private Set<Edge> edges;
 	private Set<String> vertices;
@@ -49,8 +49,9 @@ public class Hypergraph {
 		return sb.toString();
 	}
 
+	@Override
 	public List<String> toFile() {
-		List<String> out = new LinkedList<>();
+		List<String> out = new ArrayList<>(100);
 		for (Iterator<Edge> it = edges.iterator(); it.hasNext();) {
 			String e = it.next().toString();
 			if (it.hasNext())
@@ -63,7 +64,7 @@ public class Hypergraph {
 	}
 
 	public List<String> toPaceFile() {
-		List<String> out = new LinkedList<>();
+		List<String> out = new ArrayList<>(100);
 		int n = cntVertices();
 		int m = cntEdges();
 		out.add("p htd " + n + " " + m + "\n");

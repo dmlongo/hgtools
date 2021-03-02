@@ -11,6 +11,7 @@ import org.xcsp.common.Types.TypeConditionOperatorRel;
 import org.xcsp.common.Types.TypeFlag;
 import org.xcsp.common.Types.TypeRank;
 import org.xcsp.parser.callbacks.XCallbacks2;
+import org.xcsp.parser.entries.XVariables.XVar;
 import org.xcsp.parser.entries.XVariables.XVarInteger;
 
 import at.ac.tuwien.dbai.hgtools.hypergraph.Edge;
@@ -19,6 +20,8 @@ import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	private Implem implem = new Implem(this);
 	private Map<XVarInteger, String> mapVar = new LinkedHashMap<>();
+	private Domains domains = new Domains();
+	private Constraints constrs = new Constraints();
 	private Hypergraph hg = new Hypergraph();
 	private int iEdge = 0;
 
@@ -35,16 +38,26 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		return hg;
 	}
 
+	public Domains getDomains() {
+		return domains;
+	}
+
+	public Constraints getConstraints() {
+		return constrs;
+	}
+
 	@Override
 	public void buildVarInteger(XVarInteger xx, int minValue, int maxValue) {
 		String x = xx.id;
 		mapVar.put(xx, x);
+		domains.addVar(x, minValue, maxValue);
 	}
 
 	@Override
 	public void buildVarInteger(XVarInteger xx, int[] values) {
 		String x = xx.id;
 		mapVar.put(xx, x);
+		domains.addVar(x, values);
 	}
 
 	private String trVar(Object x) {
@@ -62,13 +75,20 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 			throw new ShortTableException();
 		}
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
-			cleanTuples(list, tuples);
+			tuples = cleanTuples(list, tuples);
 		}
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+		constrs.addConstraint(new ExtensionCtr(trVars(list), tuples, positive));
 	}
 
-	private void cleanTuples(XVarInteger[] list, int[][] tuples) {
+	private int[][] cleanTuples(XVarInteger[] list, int[][] tuples) {
 		// TODO
+		/*
+		 * int[][] cleanTuples = new int[tuples.length][]; String[] vars = trVars(list);
+		 * int i = 0; for (int[] tup : tuples) { if (domains.contains(vars, tup)) {
+		 * cleanTuples[i++] = tup; } } return cleanTuples;
+		 */
+		return tuples;
 	}
 
 	@Override
@@ -77,13 +97,29 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 			throw new ShortTableException();
 		}
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
-			cleanTuples(x, values);
+			values = cleanTuples(x, values);
 		}
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x)));
+		constrs.addConstraint(new ExtensionCtr(trVar(x), values, positive));
 	}
 
-	private void cleanTuples(XVarInteger x, int[] values) {
+	private int[] cleanTuples(XVarInteger x, int[] values) {
 		// TODO
+		return values;
+	}
+
+	@Override
+	public void buildCtrFalse(String id, XVar[] list) {
+		// TODO Auto-generated method stub
+		XCallbacks2.super.buildCtrFalse(id, list);
+		// throw new RuntimeException();
+	}
+
+	@Override
+	public void buildCtrTrue(String id, XVar[] list) {
+		// TODO Auto-generated method stub
+		XCallbacks2.super.buildCtrTrue(id, list);
+		// throw new RuntimeException();
 	}
 
 	@Override

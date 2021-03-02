@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import at.ac.tuwien.dbai.hgtools.csp2hg.Constraints;
+import at.ac.tuwien.dbai.hgtools.csp2hg.Domains;
 import at.ac.tuwien.dbai.hgtools.csp2hg.HypergraphFromXCSPHelper;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ConjunctiveQueryFinder;
@@ -151,19 +153,24 @@ public class Converter {
         }
 
         HypergraphFromXCSPHelper csp2hg = new HypergraphFromXCSPHelper(file.getPath());
-        Hypergraph h = csp2hg.getHypergraph();
+        Hypergraph hg = csp2hg.getHypergraph();
+        Domains doms = csp2hg.getDomains();
+        Constraints constrs = csp2hg.getConstraints();
 
         if (Main.verbose) {
             System.out.println("++ Output");
         }
-        String newFile = file.getPath();
-        newFile = outDir + File.separator + newFile.substring(0, newFile.lastIndexOf(".")) + ".hg";
 
-        Path newFilePath = Paths.get(newFile);
-        Files.createDirectories(newFilePath.getParent());
-        if (!Files.exists(newFilePath))
-            Files.createFile(newFilePath);
-        Files.write(Paths.get(newFile), h.toFile(), StandardCharsets.UTF_8);
+        String hgFile = file.getPath();
+        String noDirCspFile = hgFile.substring(hgFile.lastIndexOf(File.separator));
+        hgFile = outDir + File.separator + noDirCspFile + ".hg";
+        Util.writeToFile(hg, hgFile);
+
+        String domsFile = outDir + File.separator + noDirCspFile + ".doms";
+        Util.writeToFile(doms, domsFile);
+
+        String constrsFile = outDir + File.separator + noDirCspFile + ".ctr";
+        Util.writeToFile(constrs, constrsFile);
     }
 
     private static boolean isFileTypeOk(File file) {
