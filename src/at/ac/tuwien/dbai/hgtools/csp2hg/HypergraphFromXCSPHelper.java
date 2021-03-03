@@ -125,24 +125,28 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeConditionOperatorRel op, int k) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x)));
+		constrs.addConstraint(new PrimitiveCtr(x, op, k));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
 			TypeConditionOperatorRel op, int k) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y)));
+		constrs.addConstraint(new PrimitiveCtr(x, aop, y, op, k));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
 			TypeConditionOperatorRel op, XVarInteger z) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y), trVar(z)));
+		constrs.addConstraint(new PrimitiveCtr(x, aop, y, op, z));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, int p,
 			TypeConditionOperatorRel op, XVarInteger y) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y)));
+		constrs.addConstraint(new PrimitiveCtr(x, aop, p, op, y));
 	}
 
 	// TODO implement buildCtrIntension for all kinds of intensional constraints
@@ -151,6 +155,7 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	public void buildCtrAllDifferent(String id, XVarInteger[] list) {
 		// TODO there are many ways to represent an AllDiff constraint
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+		constrs.addConstraint(new AllDifferentCtr(trVars(list)));
 	}
 
 	@Override
