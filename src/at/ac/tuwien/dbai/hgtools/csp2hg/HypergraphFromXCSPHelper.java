@@ -170,11 +170,13 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	@Override
 	public void buildCtrSum(String id, XVarInteger[] list, Condition condition) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+		constrs.addConstraint(new SumCtr(trVars(list), condition));
 	}
 
 	@Override
 	public void buildCtrSum(String id, XVarInteger[] list, int[] coeffs, Condition condition) {
 		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
+		constrs.addConstraint(new SumCtr(trVars(list), coeffs, condition));
 	}
 
 	protected static class ShortTableException extends RuntimeException {

@@ -27,16 +27,27 @@ public class Writables {
         return newS;
     }
 
-    public static String stringify(int[] tup, char delimiter, int size, char lPar, char rPar) {
+    public static String stringify(int[] arr, char delimiter, int size, char lPar, char rPar) {
         StringBuilder sb = new StringBuilder(size);
         sb.append(lPar);
-        for (int i = 0; i < tup.length; i++) {
-            sb.append(Integer.toString(tup[i]));
-            if (i < tup.length - 1) {
+        for (int i = 0; i < arr.length; i++) {
+            sb.append(Integer.toString(arr[i]));
+            if (i < arr.length - 1) {
                 sb.append(delimiter);
             }
         }
         sb.append(rPar);
+        return sb.toString();
+    }
+
+    public static String stringify(int[] arr, char delimiter) {
+        StringBuilder sb = new StringBuilder(arr.length * 5);
+        for (int i = 0; i < arr.length; i++) {
+            sb.append(Integer.toString(arr[i]));
+            if (i < arr.length - 1) {
+                sb.append(delimiter);
+            }
+        }
         return sb.toString();
     }
 
