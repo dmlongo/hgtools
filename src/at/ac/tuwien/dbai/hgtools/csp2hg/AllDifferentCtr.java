@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import at.ac.tuwien.dbai.hgtools.util.Util;
+
 public class AllDifferentCtr implements Constraint {
 
     private ArrayList<String> vars;
@@ -24,7 +26,7 @@ public class AllDifferentCtr implements Constraint {
         out.add("AllDifferentCtr");
         StringBuilder sb = new StringBuilder(5 * vars.size());
         for (int i = 0; i < vars.size(); i++) {
-            sb.append(vars.get(i));
+            sb.append(Util.stringify(vars.get(i)));
             if (i < vars.size() - 1) {
                 sb.append(" ");
             }

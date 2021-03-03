@@ -7,6 +7,8 @@ import org.xcsp.common.Types.TypeArithmeticOperator;
 import org.xcsp.common.Types.TypeConditionOperatorRel;
 import org.xcsp.parser.entries.XVariables.XVarInteger;
 
+import at.ac.tuwien.dbai.hgtools.util.Util;
+
 public class PrimitiveCtr implements Constraint {
 
     // XYK = (x aop y) op k
@@ -66,25 +68,28 @@ public class PrimitiveCtr implements Constraint {
         out.add("PrimitiveCtr");
         String sub = null;
         String c = null;
+        String xx = (x == null) ? null : Util.stringify(x);
+        String yy = (y == null) ? null : Util.stringify(y);
+        String zz = (z == null) ? null : Util.stringify(z);
         switch (myType) {
             case UNARY:
-                out.add(x);
-                c = op.name().toLowerCase() + "(" + x + "," + k + ")";
+                out.add(xx);
+                c = op.name().toLowerCase() + "(" + xx + "," + k + ")";
                 break;
             case BINARY_XYK:
-                out.add(x + " " + y);
-                sub = aop.name().toLowerCase() + "(" + x + "," + y + ")";
+                out.add(xx + " " + yy);
+                sub = aop.name().toLowerCase() + "(" + xx + "," + yy + ")";
                 c = op.name().toLowerCase() + "(" + sub + "," + k + ")";
                 break;
             case TERNARY:
-                out.add(x + " " + y + " " + z);
-                sub = aop.name().toLowerCase() + "(" + x + "," + y + ")";
-                c = op.name().toLowerCase() + "(" + sub + "," + z + ")";
+                out.add(xx + " " + yy + " " + zz);
+                sub = aop.name().toLowerCase() + "(" + xx + "," + yy + ")";
+                c = op.name().toLowerCase() + "(" + sub + "," + zz + ")";
                 break;
             case BINARY_XPY:
-                out.add(x + " " + y);
-                sub = aop.name().toLowerCase() + "(" + x + "," + p + ")";
-                c = op.name().toLowerCase() + "(" + sub + "," + y + ")";
+                out.add(xx + " " + yy);
+                sub = aop.name().toLowerCase() + "(" + xx + "," + p + ")";
+                c = op.name().toLowerCase() + "(" + sub + "," + yy + ")";
                 break;
             default:
                 throw new RuntimeException("Unknown case: " + myType);
