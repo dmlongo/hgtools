@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import at.ac.tuwien.dbai.hgtools.util.Util;
+import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class ExtensionCtr implements Constraint {
 
@@ -22,16 +22,7 @@ public class ExtensionCtr implements Constraint {
         }
         this.tuples = new ArrayList<>(tuples.length);
         for (int[] tup : tuples) {
-            StringBuilder sb = new StringBuilder(5 * tup.length + 2);
-            sb.append('(');
-            for (int i = 0; i < tup.length; i++) {
-                sb.append(Integer.toString(tup[i]));
-                if (i < tup.length - 1) {
-                    sb.append(',');
-                }
-            }
-            sb.append(')');
-            this.tuples.add(sb.toString());
+            this.tuples.add(Writables.stringify(tup, ',', 5 * tup.length + 2, '(', ')'));
         }
         this.supports = supports;
     }
@@ -41,7 +32,7 @@ public class ExtensionCtr implements Constraint {
             throw new NullPointerException();
         }
         this.vars = new ArrayList<>(1);
-        this.vars.add(Util.stringify(var));
+        this.vars.add(var);
         this.tuples = new ArrayList<>(values.length);
         for (int val : values) {
             this.tuples.add(Integer.toString(val));
@@ -50,35 +41,18 @@ public class ExtensionCtr implements Constraint {
     }
 
     @Override
-    public List<String> getVariables() {
-        return Collections.unmodifiableList(vars);
+    public List<String> toFile() {
+        ArrayList<String> out = new ArrayList<>(4);
+        out.add("ExtensionCtr");
+        out.add(Writables.stringify(vars, ' '));
+        out.add(Writables.stringify(tuples, ' '));
+        out.add(supports ? "supports" : "conflicts");
+        return out;
     }
 
     @Override
-    public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(200);
-        out.add("ExtensionCtr");
-
-        StringBuilder sbVars = new StringBuilder(200);
-        for (int i = 0; i < vars.size(); i++) {
-            sbVars.append(Util.stringify(vars.get(i)));
-            if (i < vars.size() - 1) {
-                sbVars.append(' ');
-            }
-        }
-        out.add(sbVars.toString());
-
-        StringBuilder sbTuples = new StringBuilder(200);
-        for (int i = 0; i < tuples.size(); i++) {
-            sbTuples.append(tuples.get(i));
-            if (i < tuples.size() - 1) {
-                sbTuples.append(' ');
-            }
-        }
-        out.add(sbTuples.toString());
-
-        out.add(supports ? "supports" : "conflicts");
-        return out;
+    public List<String> getVariables() {
+        return Collections.unmodifiableList(vars);
     }
 
 }

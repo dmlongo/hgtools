@@ -164,6 +164,8 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		Edge e = new Edge("E" + ++iEdge, trVars(list));
 		e.addVertex(trVar(index));
 		hg.addEdge(e);
+		// for XCSP-core I don't need full condition
+		constrs.addConstraint(new ElementCtr(trVars(list), startIndex, trVar(index), rank, condition));
 	}
 
 	@Override

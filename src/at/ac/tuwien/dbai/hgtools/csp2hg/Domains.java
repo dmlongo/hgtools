@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import at.ac.tuwien.dbai.hgtools.util.Util;
 import at.ac.tuwien.dbai.hgtools.util.Writable;
+import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class Domains implements Writable {
     private HashMap<String, Domain> doms = new HashMap<>();
@@ -58,7 +58,7 @@ public class Domains implements Writable {
         ArrayList<String> out = new ArrayList<>(100);
         for (Entry<String, Domain> entry : doms.entrySet()) {
             StringBuilder sb = new StringBuilder(200);
-            sb.append(Util.stringify(entry.getKey()));
+            sb.append(Writables.stringify(entry.getKey()));
             sb.append(';');
             sb.append(entry.getValue().toFile());
             out.add(sb.toString());

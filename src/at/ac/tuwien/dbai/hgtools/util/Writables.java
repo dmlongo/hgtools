@@ -1,0 +1,67 @@
+package at.ac.tuwien.dbai.hgtools.util;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Iterator;
+
+public class Writables {
+
+    private Writables() {
+        throw new IllegalStateException("Utility class");
+    }
+
+    /**
+     * Removes angular brackets from names
+     * 
+     * @param s A string s to be stringified
+     * @return A stringified String
+     */
+    public static String stringify(String s) {
+        String newS = s;
+        newS = newS.replace('[', 'L');
+        newS = newS.replace(']', 'J');
+        return newS;
+    }
+
+    public static String stringify(int[] tup, char delimiter, int size, char lPar, char rPar) {
+        StringBuilder sb = new StringBuilder(size);
+        sb.append(lPar);
+        for (int i = 0; i < tup.length; i++) {
+            sb.append(Integer.toString(tup[i]));
+            if (i < tup.length - 1) {
+                sb.append(delimiter);
+            }
+        }
+        sb.append(rPar);
+        return sb.toString();
+    }
+
+    public static String stringify(Collection<String> col, char delimiter, int size) {
+        StringBuilder sb = new StringBuilder(size);
+        Iterator<String> it = col.iterator();
+        while (it.hasNext()) {
+            sb.append(stringify(it.next()));
+            if (it.hasNext()) {
+                sb.append(delimiter);
+            }
+        }
+        return sb.toString();
+    }
+
+    public static String stringify(Collection<String> col, char delimiter) {
+        return stringify(col, delimiter, 200);
+    }
+
+    public static void writeToFile(Writable w, String filename) throws IOException {
+        Path filePath = Paths.get(filename);
+        Files.createDirectories(filePath.getParent());
+        if (!Files.exists(filePath))
+            Files.createFile(filePath);
+        Files.write(filePath, w.toFile(), StandardCharsets.UTF_8);
+    }
+
+}

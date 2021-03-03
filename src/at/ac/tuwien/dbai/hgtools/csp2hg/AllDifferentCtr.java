@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import at.ac.tuwien.dbai.hgtools.util.Util;
+import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class AllDifferentCtr implements Constraint {
 
@@ -24,14 +24,7 @@ public class AllDifferentCtr implements Constraint {
     public List<String> toFile() {
         ArrayList<String> out = new ArrayList<>(2);
         out.add("AllDifferentCtr");
-        StringBuilder sb = new StringBuilder(5 * vars.size());
-        for (int i = 0; i < vars.size(); i++) {
-            sb.append(Util.stringify(vars.get(i)));
-            if (i < vars.size() - 1) {
-                sb.append(" ");
-            }
-        }
-        out.add(sb.toString());
+        out.add(Writables.stringify(vars, ' ', 5 * vars.size()));
         return out;
     }
 

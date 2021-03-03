@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import at.ac.tuwien.dbai.hgtools.util.Util;
+import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class Edge {
 	private String name;
@@ -72,9 +72,9 @@ public class Edge {
 	public String toString() {
 		String s = "";
 
-		s += Util.stringify(name) + "(";
+		s += Writables.stringify(name) + "(";
 		for (String v : vertices) {
-			s += Util.stringify(v) + ",";
+			s += Writables.stringify(v) + ",";
 		}
 		s = s.substring(0, s.length() - 1);
 		s += ")";

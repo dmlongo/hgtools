@@ -24,6 +24,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.util.Util;
+import at.ac.tuwien.dbai.hgtools.util.Writables;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -164,13 +165,13 @@ public class Converter {
         String hgFile = file.getPath();
         String noDirCspFile = hgFile.substring(hgFile.lastIndexOf(File.separator));
         hgFile = outDir + File.separator + noDirCspFile + ".hg";
-        Util.writeToFile(hg, hgFile);
+        Writables.writeToFile(hg, hgFile);
 
         String domsFile = outDir + File.separator + noDirCspFile + ".doms";
-        Util.writeToFile(doms, domsFile);
+        Writables.writeToFile(doms, domsFile);
 
         String constrsFile = outDir + File.separator + noDirCspFile + ".ctr";
-        Util.writeToFile(constrs, constrsFile);
+        Writables.writeToFile(constrs, constrsFile);
     }
 
     private static boolean isFileTypeOk(File file) {

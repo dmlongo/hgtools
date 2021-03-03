@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import at.ac.tuwien.dbai.hgtools.csp2hg.Constraint;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Edge;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
@@ -105,21 +104,6 @@ public class Util {
 		return filename.endsWith("sql") || filename.endsWith("tpl");
 	}
 
-	/**
-	 * Removes angular brackets from vertex names
-	 * 
-	 * @param s A string s to be stringified
-	 * @return A stringified String
-	 */
-	public static String stringify(String s) {
-		String newS = s;
-
-		newS = newS.replace('[', 'L');
-		newS = newS.replace(']', 'J');
-
-		return newS;
-	}
-
 	public static <T> T[] shiftLeftResize(T[] v, int k) {
 		for (int i = 0; i < v.length - k; i++) {
 			v[i] = v[i + k];
@@ -197,14 +181,6 @@ public class Util {
 		LinkedList<String> res = new LinkedList<>();
 		res.add(query.toString());
 		return res;
-	}
-
-	public static void writeToFile(Writable w, String filename) throws IOException {
-		Path filePath = Paths.get(filename);
-		Files.createDirectories(filePath.getParent());
-		if (!Files.exists(filePath))
-			Files.createFile(filePath);
-		Files.write(filePath, w.toFile(), StandardCharsets.UTF_8);
 	}
 
 	private static String nextOutName(String outDir, String name, int curr, int tot) {
@@ -436,14 +412,6 @@ public class Util {
 		tks.add(hg.substring(start));
 
 		return tks;
-	}
-
-	public static List<String> toFile(List<Constraint> constrs) {
-		ArrayList<String> out = new ArrayList<>(20 * constrs.size());
-		for (Constraint c : constrs) {
-			out.addAll(c.toFile());
-		}
-		return out;
 	}
 
 }
