@@ -8,14 +8,16 @@ import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class ExtensionCtr implements Constraint {
 
+    private String name;
     private ArrayList<String> vars;
     private ArrayList<String> tuples;
     private boolean supports;
 
-    public ExtensionCtr(String[] vars, int[][] tuples, boolean supports) {
-        if (vars == null || tuples == null) {
+    public ExtensionCtr(String name, String[] vars, int[][] tuples, boolean supports) {
+        if (name == null || vars == null || tuples == null) {
             throw new NullPointerException();
         }
+        this.name = name;
         this.vars = new ArrayList<>(vars.length);
         for (String v : vars) {
             this.vars.add(v);
@@ -27,10 +29,11 @@ public class ExtensionCtr implements Constraint {
         this.supports = supports;
     }
 
-    public ExtensionCtr(String var, int[] values, boolean supports) {
-        if (var == null || values == null) {
+    public ExtensionCtr(String name, String var, int[] values, boolean supports) {
+        if (name == null || var == null || values == null) {
             throw new NullPointerException();
         }
+        this.name = name;
         this.vars = new ArrayList<>(1);
         this.vars.add(var);
         this.tuples = new ArrayList<>(values.length);
@@ -42,8 +45,9 @@ public class ExtensionCtr implements Constraint {
 
     @Override
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(4);
+        ArrayList<String> out = new ArrayList<>(5);
         out.add("ExtensionCtr");
+        out.add(name);
         out.add(Writables.stringify(vars, ' '));
         out.add(Writables.stringify(tuples, ' '));
         out.add(supports ? "supports" : "conflicts");

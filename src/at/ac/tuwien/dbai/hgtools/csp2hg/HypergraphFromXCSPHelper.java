@@ -77,8 +77,10 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
 			tuples = cleanTuples(list, tuples);
 		}
-		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
-		constrs.addConstraint(new ExtensionCtr(trVars(list), tuples, positive));
+		String eName = "E" + ++iEdge;
+		String[] eVars = trVars(list);
+		hg.addEdge(new Edge(eName, eVars));
+		constrs.addConstraint(new ExtensionCtr(eName, eVars, tuples, positive));
 	}
 
 	private int[][] cleanTuples(XVarInteger[] list, int[][] tuples) {
@@ -99,8 +101,10 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 		if (flags.contains(TypeFlag.UNCLEAN_TUPLES)) {
 			values = cleanTuples(x, values);
 		}
-		hg.addEdge(new Edge("E" + ++iEdge, trVar(x)));
-		constrs.addConstraint(new ExtensionCtr(trVar(x), values, positive));
+		String eName = "E" + ++iEdge;
+		String eVar = trVar(x);
+		hg.addEdge(new Edge(eName, eVar));
+		constrs.addConstraint(new ExtensionCtr(eName, eVar, values, positive));
 	}
 
 	private int[] cleanTuples(XVarInteger x, int[] values) {
@@ -124,29 +128,33 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeConditionOperatorRel op, int k) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVar(x)));
-		constrs.addConstraint(new PrimitiveCtr(x, op, k));
+		String eName = "E" + ++iEdge;
+		hg.addEdge(new Edge(eName, trVar(x)));
+		constrs.addConstraint(new PrimitiveCtr(eName, x, op, k));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
 			TypeConditionOperatorRel op, int k) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y)));
-		constrs.addConstraint(new PrimitiveCtr(x, aop, y, op, k));
+		String eName = "E" + ++iEdge;
+		hg.addEdge(new Edge(eName, trVar(x), trVar(y)));
+		constrs.addConstraint(new PrimitiveCtr(eName, x, aop, y, op, k));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
 			TypeConditionOperatorRel op, XVarInteger z) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y), trVar(z)));
-		constrs.addConstraint(new PrimitiveCtr(x, aop, y, op, z));
+		String eName = "E" + ++iEdge;
+		hg.addEdge(new Edge(eName, trVar(x), trVar(y), trVar(z)));
+		constrs.addConstraint(new PrimitiveCtr(eName, x, aop, y, op, z));
 	}
 
 	@Override
 	public void buildCtrPrimitive(String id, XVarInteger x, TypeArithmeticOperator aop, int p,
 			TypeConditionOperatorRel op, XVarInteger y) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVar(x), trVar(y)));
-		constrs.addConstraint(new PrimitiveCtr(x, aop, p, op, y));
+		String eName = "E" + ++iEdge;
+		hg.addEdge(new Edge(eName, trVar(x), trVar(y)));
+		constrs.addConstraint(new PrimitiveCtr(eName, x, aop, p, op, y));
 	}
 
 	// TODO implement buildCtrIntension for all kinds of intensional constraints
@@ -154,29 +162,38 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	@Override
 	public void buildCtrAllDifferent(String id, XVarInteger[] list) {
 		// TODO there are many ways to represent an AllDiff constraint
-		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
-		constrs.addConstraint(new AllDifferentCtr(trVars(list)));
+		String eName = "E" + ++iEdge;
+		String[] eVars = trVars(list);
+		hg.addEdge(new Edge(eName, eVars));
+		constrs.addConstraint(new AllDifferentCtr(eName, eVars));
 	}
 
 	@Override
 	public void buildCtrElement(String id, XVarInteger[] list, int startIndex, XVarInteger index, TypeRank rank,
 			Condition condition) {
-		Edge e = new Edge("E" + ++iEdge, trVars(list));
-		e.addVertex(trVar(index));
+		String eName = "E" + ++iEdge;
+		String[] eVars = trVars(list);
+		String idx = trVar(index);
+		Edge e = new Edge(eName, eVars);
+		e.addVertex(idx);
 		hg.addEdge(e);
-		constrs.addConstraint(new ElementCtr(trVars(list), startIndex, trVar(index), rank, condition));
+		constrs.addConstraint(new ElementCtr(eName, eVars, startIndex, idx, rank, condition));
 	}
 
 	@Override
 	public void buildCtrSum(String id, XVarInteger[] list, Condition condition) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
-		constrs.addConstraint(new SumCtr(trVars(list), condition));
+		String eName = "E" + ++iEdge;
+		String[] eVars = trVars(list);
+		hg.addEdge(new Edge(eName, eVars));
+		constrs.addConstraint(new SumCtr(eName, eVars, condition));
 	}
 
 	@Override
 	public void buildCtrSum(String id, XVarInteger[] list, int[] coeffs, Condition condition) {
-		hg.addEdge(new Edge("E" + ++iEdge, trVars(list)));
-		constrs.addConstraint(new SumCtr(trVars(list), coeffs, condition));
+		String eName = "E" + ++iEdge;
+		String[] eVars = trVars(list);
+		hg.addEdge(new Edge(eName, eVars));
+		constrs.addConstraint(new SumCtr(eName, eVars, coeffs, condition));
 	}
 
 	protected static class ShortTableException extends RuntimeException {

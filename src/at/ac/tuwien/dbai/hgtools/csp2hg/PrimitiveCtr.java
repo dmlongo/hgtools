@@ -19,6 +19,7 @@ public class PrimitiveCtr implements Constraint {
 
     private PrimitiveType myType = null;
 
+    private String name;
     private String x = null;
     private String y = null;
     private String z = null;
@@ -27,15 +28,18 @@ public class PrimitiveCtr implements Constraint {
     private int p;
     private int k;
 
-    public PrimitiveCtr(XVarInteger x, TypeConditionOperatorRel op, int k) {
+    public PrimitiveCtr(String name, XVarInteger x, TypeConditionOperatorRel op, int k) {
         myType = PrimitiveType.UNARY;
+        this.name = name;
         this.x = x.id;
         this.op = op;
         this.k = k;
     }
 
-    public PrimitiveCtr(XVarInteger x, TypeArithmeticOperator aop, XVarInteger y, TypeConditionOperatorRel op, int k) {
+    public PrimitiveCtr(String name, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
+            TypeConditionOperatorRel op, int k) {
         myType = PrimitiveType.BINARY_XYK;
+        this.name = name;
         this.x = x.id;
         this.aop = aop;
         this.y = y.id;
@@ -43,9 +47,10 @@ public class PrimitiveCtr implements Constraint {
         this.k = k;
     }
 
-    public PrimitiveCtr(XVarInteger x, TypeArithmeticOperator aop, XVarInteger y, TypeConditionOperatorRel op,
-            XVarInteger z) {
+    public PrimitiveCtr(String name, XVarInteger x, TypeArithmeticOperator aop, XVarInteger y,
+            TypeConditionOperatorRel op, XVarInteger z) {
         myType = PrimitiveType.TERNARY;
+        this.name = name;
         this.x = x.id;
         this.aop = aop;
         this.y = y.id;
@@ -53,8 +58,10 @@ public class PrimitiveCtr implements Constraint {
         this.z = z.id;
     }
 
-    public PrimitiveCtr(XVarInteger x, TypeArithmeticOperator aop, int p, TypeConditionOperatorRel op, XVarInteger y) {
+    public PrimitiveCtr(String name, XVarInteger x, TypeArithmeticOperator aop, int p, TypeConditionOperatorRel op,
+            XVarInteger y) {
         myType = PrimitiveType.BINARY_XPY;
+        this.name = name;
         this.x = x.id;
         this.aop = aop;
         this.p = p;
@@ -64,8 +71,9 @@ public class PrimitiveCtr implements Constraint {
 
     @Override
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(3);
+        ArrayList<String> out = new ArrayList<>(4);
         out.add("PrimitiveCtr");
+        out.add(name);
         String sub = null;
         String c = null;
         String xx = (x == null) ? null : Writables.stringify(x);

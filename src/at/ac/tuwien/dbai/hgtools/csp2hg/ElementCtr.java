@@ -11,16 +11,18 @@ import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class ElementCtr implements Constraint {
 
+    private String name;
     private ArrayList<String> list;
     private int startIndex;
     private String index;
     private TypeRank rank;
     private Condition condition;
 
-    public ElementCtr(String[] list, int startIndex, String index, TypeRank rank, Condition condition) {
-        if (list == null) {
+    public ElementCtr(String name, String[] list, int startIndex, String index, TypeRank rank, Condition condition) {
+        if (name == null || list == null) {
             throw new NullPointerException();
         }
+        this.name = name;
         this.list = new ArrayList<>(list.length);
         for (String v : list) {
             this.list.add(v);
@@ -33,8 +35,9 @@ public class ElementCtr implements Constraint {
 
     @Override
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(6);
+        ArrayList<String> out = new ArrayList<>(7);
         out.add("ElementCtr");
+        out.add(name);
         out.add(Writables.stringify(list, ' '));
         out.add(Integer.toString(startIndex));
         out.add(index);

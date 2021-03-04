@@ -16,7 +16,7 @@ public class Constraints implements Writable {
     }
 
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(constrs.size() * 6);
+        ArrayList<String> out = new ArrayList<>(constrs.size() * 7);
         for (Constraint c : constrs) {
             out.addAll(c.toFile());
         }

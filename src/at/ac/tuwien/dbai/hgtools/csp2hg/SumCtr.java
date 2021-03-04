@@ -12,14 +12,16 @@ import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class SumCtr implements Constraint {
 
+    private String name;
     private ArrayList<String> vars;
     private int[] coeffs;
     private ConditionVal condition;
 
-    public SumCtr(String[] vars, int[] coeffs, Condition condition) {
-        if (vars == null) {
+    public SumCtr(String name, String[] vars, int[] coeffs, Condition condition) {
+        if (name == null || vars == null) {
             throw new NullPointerException();
         }
+        this.name = name;
         this.vars = new ArrayList<>(vars.length);
         for (String v : vars) {
             this.vars.add(v);
@@ -35,14 +37,15 @@ public class SumCtr implements Constraint {
         this.condition = (ConditionVal) condition;
     }
 
-    public SumCtr(String[] vars, Condition condition) {
-        this(vars, null, condition);
+    public SumCtr(String name, String[] vars, Condition condition) {
+        this(name, vars, null, condition);
     }
 
     @Override
     public Collection<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(4);
+        ArrayList<String> out = new ArrayList<>(5);
         out.add("SumCtr");
+        out.add(name);
         out.add(Writables.stringify(vars, ' '));
         out.add(Writables.stringify(coeffs, ' '));
         out.add("(" + condition.operator.toString().toLowerCase() + "," + condition.k + ")");

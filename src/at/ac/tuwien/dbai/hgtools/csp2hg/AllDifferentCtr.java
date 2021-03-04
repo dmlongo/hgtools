@@ -8,12 +8,14 @@ import at.ac.tuwien.dbai.hgtools.util.Writables;
 
 public class AllDifferentCtr implements Constraint {
 
+    private String name;
     private ArrayList<String> vars;
 
-    public AllDifferentCtr(String[] vars) {
-        if (vars == null) {
+    public AllDifferentCtr(String name, String[] vars) {
+        if (name == null || vars == null) {
             throw new NullPointerException();
         }
+        this.name = name;
         this.vars = new ArrayList<>(vars.length);
         for (String v : vars) {
             this.vars.add(v);
@@ -22,8 +24,9 @@ public class AllDifferentCtr implements Constraint {
 
     @Override
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(2);
+        ArrayList<String> out = new ArrayList<>(3);
         out.add("AllDifferentCtr");
+        out.add(name);
         out.add(Writables.stringify(vars, ' ', 5 * vars.size()));
         return out;
     }
