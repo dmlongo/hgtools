@@ -49,8 +49,8 @@ public class ExtensionCtr implements Constraint {
         out.add("ExtensionCtr");
         out.add(name);
         out.add(Writables.stringify(vars, ' '));
-        out.add(Writables.stringify(tuples, ' '));
         out.add(supports ? "supports" : "conflicts");
+        out.add(Writables.stringify(tuples, ' '));
         return out;
     }
 
