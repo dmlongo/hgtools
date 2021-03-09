@@ -36,6 +36,7 @@ public class Converter {
 
     private static int skipS = 0;
     private static int skipE = 0;
+    private static boolean print = false;
     private static String outDir = "output";
 
     private static Schema schema;
@@ -167,11 +168,17 @@ public class Converter {
         hgFile = outDir + File.separator + noDirCspFile + ".hg";
         Writables.writeToFile(hg, hgFile);
 
-        String domsFile = outDir + File.separator + noDirCspFile + ".doms";
+        String domsFile = outDir + File.separator + noDirCspFile + ".dom";
         Writables.writeToFile(doms, domsFile);
 
         String constrsFile = outDir + File.separator + noDirCspFile + ".ctr";
         Writables.writeToFile(constrs, constrsFile);
+
+        if (print) {
+            for (String e : hg.toFile()) {
+                System.out.println(e);
+            }
+        }
     }
 
     private static boolean isFileTypeOk(File file) {
@@ -188,15 +195,18 @@ public class Converter {
         while (args[z].startsWith("-")) {
             String cmd = args[z++];
             switch (cmd) {
-                case "-skip":
-                    skipS = Integer.parseInt(args[z++]);
-                    skipE = Integer.parseInt(args[z++]);
-                    break;
-                case "-out":
-                    outDir = args[z++];
-                    break;
-                default:
-                    throw new Main.UnsupportedCommandException(cmd);
+            case "-skip":
+                skipS = Integer.parseInt(args[z++]);
+                skipE = Integer.parseInt(args[z++]);
+                break;
+            case "-print":
+                print = true;
+                break;
+            case "-out":
+                outDir = args[z++];
+                break;
+            default:
+                throw new Main.UnsupportedCommandException(cmd);
             }
         }
         return z;
