@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ViewPredicate extends SimplePredicate implements Predicate {
+public class ViewPredicate extends SimplePredicate {
 
 	private HashMap<String, Predicate> definingPredicates;
 	private HashMap<String, String> definingAttributes;
@@ -75,7 +75,6 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 
 	@Override
 	public String getDefiningAttribute(String viewAttr) {
-		// TODO Auto-generated method stub
 		if (definingAttributes.get(viewAttr) == null) {
 			throw new IllegalArgumentException(alias + SEP + viewAttr + " does not exist.");
 		}
@@ -84,7 +83,6 @@ public class ViewPredicate extends SimplePredicate implements Predicate {
 		String defPredName = result.substring(0, sep);
 		String defAttrName = result.substring(sep + 1);
 		Predicate defPredicate = definingPredicates.get(defPredName);
-		// TODO maybe use a StringBuilder to avoid wasting memory
 		return alias + SEP + defPredicate.getDefiningAttribute(defAttrName);
 	}
 

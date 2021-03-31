@@ -18,27 +18,32 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		String action = args[0];
 		String type = args[1];
-		if (action.equals(STATS)) {
+		switch (action) {
+		case STATS:
 			if (!type.equals(SQL) && !type.equals(XCSP) && !type.equals(HG)) {
 				throw new UnsupportedCommandException(type);
 			}
 			MainStats.main(type, args, 2);
-		} else if (action.equals(CONVERT)) {
+			break;
+		case CONVERT:
 			if (!type.equals(SQL) && !type.equals(XCSP)) {
 				throw new UnsupportedCommandException(type);
 			}
 			Converter.convert(type, args, 2);
-		} else if (action.equals(EXTRACT)) {
+			break;
+		case EXTRACT:
 			if (!type.equals(SQL)) {
 				throw new UnsupportedCommandException(type);
 			}
-			MainExtract.main(type, args, 2);
-		} else if (action.equals(TRANSLATE)) {
+			Extractor.extract(type, args, 2);
+			break;
+		case TRANSLATE:
 			if (!type.equals(H2P)) {
 				throw new UnsupportedCommandException(type);
 			}
 			MainTranslate.main(type, args, 2);
-		} else {
+			break;
+		default:
 			throw new UnsupportedCommandException(action);
 		}
 	}

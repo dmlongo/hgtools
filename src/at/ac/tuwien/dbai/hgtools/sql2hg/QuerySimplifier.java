@@ -1,21 +1,19 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.jgrapht.Graph;
-import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
+import at.ac.tuwien.dbai.hgtools.util.GraphUtils;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
@@ -46,7 +44,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	private Schema schema;
 	private Graph<SelectBody, SubqueryEdge> graph;
 	private QueryExtractor qExtr;
-	private LinkedList<Select> queries;
+	private LinkedList<Query> queries;
 
 	private ExprVisitor exprVisitor;
 	private PlainSelect tempBody;
@@ -73,7 +71,7 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		this.ambiguousNames = new HashSet<>();
 	}
 
-	public List<Select> getSimpleQueries() {
+	public List<Query> getSimpleQueries() {
 		run();
 		return queries;
 	}
@@ -81,41 +79,25 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 	private void run() {
 		collectViewNames(qExtr);
 		HashMap<String, WithItem> views = collectAllViews(qExtr);
-		HashSet<SelectBody> selects = findIndependentSelects(graph);
+		Set<SelectBody> selects = GraphUtils.findTerminalNodes(graph); // independent selects
 		for (SelectBody body : selects) {
-			// QueryExtractor currExtr = findCurrentQExtr(qExtr, body);
-			// collectViewNames(currExtr);
-			// HashMap<String, WithItem> views = collectAllViews(currExtr);
 			Select stmt = simplify(body);
 			PlainSelect newBody = (PlainSelect) stmt.getSelectBody();
 			HashSet<WithItem> withItems = findViewsOf(newBody, views);
 			LinkedList<WithItem> withItemsList = sort(withItems);
 			stmt.setWithItemsList(withItemsList);
-			queries.add(stmt);
+			queries.add(new Query(stmt));
 		}
-	}
-
-	private QueryExtractor findCurrentQExtr(QueryExtractor qExtr, SelectBody body) {
-		if (qExtr.getRoot() == body) {
-			return qExtr;
-		}
-		for (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
-			QueryExtractor res = findCurrentQExtr(vExtr, body);
-			if (res != null) {
-				return res;
-			}
-		}
-		return null;
 	}
 
 	private LinkedList<WithItem> sort(HashSet<WithItem> withItems) {
 		HashMap<String, WithItem> views = makeMap(withItems);
 		Graph<String, DefaultEdge> deps = makeDependencyGraph(views);
-		List<Graph<String, DefaultEdge>> comps = computeConnComps(deps);
-		List<Graph<String, DefaultEdge>> sortedComps = sortComponents(comps);
+		List<Graph<String, DefaultEdge>> comps = GraphUtils.computeConnComps(deps);
+		List<Graph<String, DefaultEdge>> sortedComps = GraphUtils.sortComponents(comps);
 		LinkedList<WithItem> res = new LinkedList<>();
 		for (Graph<String, DefaultEdge> g : sortedComps) {
-			LinkedList<String> dfs = reverseBFSAlphabeticalSort(g);
+			List<String> dfs = GraphUtils.reverseBFSAlphabeticalSort(g);
 			for (String vName : dfs) {
 				res.add(views.get(vName));
 			}
@@ -162,102 +144,6 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 				if (views.containsKey(t)) {
 					res.add(t);
 				}
-			}
-		}
-		return res;
-	}
-
-	private List<Graph<String, DefaultEdge>> computeConnComps(Graph<String, DefaultEdge> deps) {
-		List<Graph<String, DefaultEdge>> res = new LinkedList<>();
-		ConnectivityInspector<String, DefaultEdge> connInsp = new ConnectivityInspector<>(deps);
-		List<Set<String>> compSets = connInsp.connectedSets();
-		for (Set<String> cVertices : compSets) {
-			Graph<String, DefaultEdge> c = buildComponent(deps, cVertices);
-			res.add(c);
-		}
-		return res;
-	}
-
-	private Graph<String, DefaultEdge> buildComponent(Graph<String, DefaultEdge> deps, Set<String> cVertices) {
-		Graph<String, DefaultEdge> c = new DefaultDirectedGraph<>(DefaultEdge.class);
-		for (String v : cVertices) {
-			c.addVertex(v);
-		}
-		for (DefaultEdge e : deps.edgeSet()) {
-			String source = deps.getEdgeSource(e);
-			String dest = deps.getEdgeTarget(e);
-			if (cVertices.contains(source) && cVertices.contains(dest)) {
-				c.addEdge(source, dest);
-			}
-		}
-		return c;
-	}
-
-	private List<Graph<String, DefaultEdge>> sortComponents(List<Graph<String, DefaultEdge>> comps) {
-		HashMap<String, Graph<String, DefaultEdge>> compsMap = makeMap(comps);
-		LinkedList<String> roots = new LinkedList<>(compsMap.keySet());
-		Collections.sort(roots);
-		List<Graph<String, DefaultEdge>> res = new LinkedList<>();
-		for (String r : roots) {
-			res.add(compsMap.get(r));
-		}
-		return res;
-	}
-
-	private HashMap<String, Graph<String, DefaultEdge>> makeMap(List<Graph<String, DefaultEdge>> comps) {
-		HashMap<String, Graph<String, DefaultEdge>> res = new HashMap<>();
-		for (Graph<String, DefaultEdge> c : comps) {
-			String r = findRoots(c).getFirst();
-			res.put(r, c);
-		}
-		return res;
-	}
-
-	private LinkedList<String> findRoots(Graph<String, DefaultEdge> c) {
-		LinkedList<String> res = new LinkedList<>();
-		for (String s : c.vertexSet()) {
-			if (c.inDegreeOf(s) == 0) {
-				res.add(s);
-			}
-		}
-		if (res.isEmpty()) {
-			throw new RuntimeException("No roots in " + c);
-		}
-		Collections.sort(res); // alphabetical order
-		return res;
-	}
-
-	private LinkedList<String> reverseBFSAlphabeticalSort(Graph<String, DefaultEdge> g) {
-		LinkedList<String> res = new LinkedList<>();
-		LinkedList<String> roots = findRoots(g);
-		for (String r : roots) {
-			LinkedList<String> toVisit = new LinkedList<>();
-			HashSet<String> visited = new HashSet<>();
-			toVisit.addLast(r);
-			while (!toVisit.isEmpty()) {
-				String v = toVisit.removeFirst();
-				if (!visited.contains(v)) {
-					res.addFirst(v);
-					TreeSet<String> sortedChildren = new TreeSet<>();
-					Set<DefaultEdge> children = g.outgoingEdgesOf(v);
-					for (DefaultEdge e : children) {
-						sortedChildren.add(g.getEdgeTarget(e));
-					}
-					toVisit.addAll(sortedChildren);
-					visited.add(v);
-				}
-			}
-		}
-		return removeDuplicates(res);
-	}
-
-	private LinkedList<String> removeDuplicates(LinkedList<String> list) {
-		LinkedList<String> res = new LinkedList<>();
-		HashSet<String> seen = new HashSet<>();
-		for (String s : list) {
-			if (!seen.contains(s)) {
-				res.add(s);
-				seen.add(s);
 			}
 		}
 		return res;
@@ -323,16 +209,6 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		return views;
 	}
 
-	private HashSet<SelectBody> findIndependentSelects(Graph<SelectBody, SubqueryEdge> g) {
-		HashSet<SelectBody> res = new HashSet<>();
-		for (SelectBody s : g.vertexSet()) {
-			if (g.outDegreeOf(s) == 0) {
-				res.add(s);
-			}
-		}
-		return res;
-	}
-
 	private HashSet<WithItem> findViewsOf(PlainSelect sel, HashMap<String, WithItem> views) {
 		HashSet<WithItem> res = new HashSet<>();
 		if (sel.getFromItem() != null) {
@@ -356,34 +232,6 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		}
 		return res;
 	}
-
-	/*
-	 * private LinkedList<String> findViewsOf(SelectBody sel, QueryExtractor qExtr)
-	 * { if (qExtr.getSelectToViewMap().containsKey(sel)) { LinkedList<String> res =
-	 * expandViewsList(qExtr.getSelectToViewMap().get(sel), qExtr, new HashSet<>());
-	 * return res; }
-	 * 
-	 * // order-dependent - same select in different branches = problem for
-	 * (QueryExtractor vExtr : qExtr.getViewToGraphMap().values()) {
-	 * LinkedList<String> res = findViewsOf(sel, vExtr); if (res != null) { return
-	 * res; } } return new LinkedList<String>(); }
-	 */
-
-	/*
-	 * private LinkedList<String> expandViewsList(LinkedList<String> toExpand,
-	 * QueryExtractor qExtr, HashSet<String> visited) { HashSet<String> resSet = new
-	 * HashSet<>(toExpand);
-	 * 
-	 * LinkedList<String> toVisit = new LinkedList<>(resSet); while
-	 * (!toVisit.isEmpty()) { String view = toVisit.removeFirst(); if
-	 * (!visited.contains(view)) { visited.add(view);
-	 * 
-	 * QueryExtractor vExtr = qExtr.getViewToGraphMap().get(view); SelectBody vBody
-	 * = vExtr.getRoot(); LinkedList<String> newRes = findViewsOf(vBody, vExtr);
-	 * 
-	 * resSet.addAll(newRes); toVisit.addAll(newRes); } } return new
-	 * LinkedList<String>(resSet); }
-	 */
 
 	private WithItem simplify(SelectBody viewBody, String viewName) {
 		exprVisitor.reset();
@@ -599,16 +447,6 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 		tempBody.addSelectItems(selectExpressionItem);
 	}
 
-	private Column updateColumn(Column col) {
-		Table newTable = null;
-		if (col.getTable() != null) {
-			newTable = updateTable(col.getTable());
-		}
-
-		Column newCol = new Column(newTable, col.getColumnName());
-		return newCol;
-	}
-
 	// ExprVisitor
 
 	private class ExprVisitor extends ExpressionVisitorAdapterFixed {
@@ -648,8 +486,18 @@ public class QuerySimplifier extends QueryVisitorNoExpressionAdapter {
 			}
 		}
 
+		private Column updateColumn(Column col) {
+			Table newTable = null;
+			if (col.getTable() != null) {
+				newTable = updateTable(col.getTable());
+			}
+
+			return new Column(newTable, col.getColumnName());
+		}
+
 		@Override
 		public void visit(OrExpression expr) {
+			// ignore OR for the moment
 		}
 	}
 

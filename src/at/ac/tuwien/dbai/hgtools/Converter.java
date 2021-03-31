@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +22,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
-import at.ac.tuwien.dbai.hgtools.util.Util;
+import at.ac.tuwien.dbai.hgtools.util.SqlUtils;
 import at.ac.tuwien.dbai.hgtools.util.Writables;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -51,8 +50,8 @@ public class Converter {
 
         if (type.equals(Main.SQL)) {
             schema = new Schema();
-            String schemaString = Util.readSQLFile(args[z++]);
-            Util.readSQLPredicateDefinitions(schemaString, schema);
+            String schemaString = SqlUtils.readFile(args[z++]);
+            SqlUtils.readPredicateDefinitions(schemaString, schema);
         }
 
         for (int i = z; i < args.length; i++) {
@@ -83,7 +82,7 @@ public class Converter {
     }
 
     private static void convertSQL(File file) throws IOException, JSQLParserException {
-        String sqlString = Util.readSQLFile(file.getPath(), skipS, skipE);
+        String sqlString = SqlUtils.readFile(file.getPath(), skipS, skipE);
         Statement stmt = CCJSqlParserUtil.parse(sqlString);
         Select selectStmt = (Select) stmt;
 
@@ -110,7 +109,7 @@ public class Converter {
             hgBuilder.buildJoin(join);
         }
         Hypergraph h = hgBuilder.getHypergraph();
-        HashMap<String, List<String>> map = hgBuilder.getVarToColMapping();
+        Map<String, List<String>> map = hgBuilder.getVarToColMapping();
         System.out.println(h);
 
         String newFile = file.getAbsolutePath();
@@ -130,7 +129,7 @@ public class Converter {
         Files.write(Paths.get(newFileMap), toFile(map), StandardCharsets.UTF_8);
     }
 
-    private static List<String> toFile(HashMap<String, List<String>> map) {
+    private static List<String> toFile(Map<String, List<String>> map) {
         ArrayList<String> lines = new ArrayList<>(map.size());
         for (Map.Entry<String, List<String>> entry : map.entrySet()) {
             StringBuilder sb = new StringBuilder(100);
@@ -183,7 +182,7 @@ public class Converter {
 
     private static boolean isFileTypeOk(File file) {
         if (type.equals(Main.SQL)) {
-            return Util.isSQLFile(file.getName());
+            return SqlUtils.isSQLFile(file.getName());
         } else if (type.equals(Main.XCSP)) {
             return file.getName().contains("xml");
         } else {

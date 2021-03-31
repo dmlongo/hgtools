@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
@@ -13,10 +15,10 @@ import at.ac.tuwien.dbai.hgtools.util.Util;
 public class SchemaMaker {
 
 	private SchemaWithDuplicates schema;
-	private HashMap<String, LinkedList<String>> tab2users;
-	private HashMap<String, LinkedList<String>> user2tabs;
-	private HashMap<String, String> view2file;
-	private HashMap<String, String> file2view;
+	private Map<String, LinkedList<String>> tab2users;
+	private Map<String, LinkedList<String>> user2tabs;
+	private Map<String, String> view2file;
+	private Map<String, String> file2view;
 
 	private static class Record {
 		Record parent;
@@ -25,15 +27,15 @@ public class SchemaMaker {
 		HashSet<PredicateDefinition> certain;
 		HashSet<PredicateDefinition> ambiguous;
 		HashSet<PredicateDefinition> undefined;
-		HashSet<String> unknownCols;
+		Set<String> unknownCols;
 
 		public Record(PredicateBuilder pb, Record r) {
 			this.pb = pb;
 			this.parent = r;
 
-			certain = new HashSet<PredicateDefinition>();
-			ambiguous = new HashSet<PredicateDefinition>();
-			undefined = new HashSet<PredicateDefinition>();
+			certain = new HashSet<>();
+			ambiguous = new HashSet<>();
+			undefined = new HashSet<>();
 			unknownCols = pb.getUnknowncolumns();
 		}
 
@@ -43,9 +45,8 @@ public class SchemaMaker {
 		}
 	}
 
-	public SchemaMaker(SchemaWithDuplicates schema, HashMap<String, LinkedList<String>> tab2users,
-			HashMap<String, LinkedList<String>> user2tabs, HashMap<String, String> view2file,
-			HashMap<String, String> file2view) {
+	public SchemaMaker(SchemaWithDuplicates schema, Map<String, LinkedList<String>> tab2users,
+			Map<String, LinkedList<String>> user2tabs, Map<String, String> view2file, Map<String, String> file2view) {
 		this.schema = schema;
 		this.tab2users = tab2users;
 		this.user2tabs = user2tabs;
@@ -74,8 +75,7 @@ public class SchemaMaker {
 		cleanUnknownColumns(recs);
 		cleanUnknownColumnsParents(recs);
 
-		Schema out = makeSchema(recs);
-		return out;
+		return makeSchema(recs);
 	}
 
 	private HashSet<String> getUnknownColumns(LinkedList<Record> recs) {
@@ -203,7 +203,7 @@ public class SchemaMaker {
 						}
 					}
 
-					if (candidates.size() == 0) {
+					if (candidates.isEmpty()) {
 						r.undefined.add(pred);
 					} else if (candidates.size() == 1) {
 						r.certain.add(candidates.iterator().next());

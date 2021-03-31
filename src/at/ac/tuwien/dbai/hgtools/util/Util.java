@@ -1,8 +1,6 @@
 package at.ac.tuwien.dbai.hgtools.util;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,11 +8,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -23,85 +21,13 @@ import at.ac.tuwien.dbai.hgtools.hypergraph.Edge;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.Statements;
-import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import net.sf.jsqlparser.statement.create.table.CreateTable;
-import net.sf.jsqlparser.statement.select.Select;
 
 public class Util {
 
 	private Util() {
 		throw new IllegalStateException("Utility class");
-	}
-
-	public static String readSQLFile(String fName, int skipStart, int skipEnd) {
-		List<String> lines = new LinkedList<>();
-		StringBuilder sb = new StringBuilder(500);
-		try (BufferedReader br = new BufferedReader(new FileReader(fName))) {
-			for (int i = 0; i < skipStart; i++) {
-				br.readLine();
-			}
-
-			String sCurrentLine;
-			while ((sCurrentLine = br.readLine()) != null) {
-				if (!skip(sCurrentLine)) {
-					lines.add(sCurrentLine);
-				}
-			}
-			if (lines.size() - skipEnd > 0) {
-				lines = lines.subList(0, lines.size() - skipEnd);
-			} else {
-				lines.clear();
-			}
-
-			for (String l : lines) {
-				sb.append(l);
-				sb.append('\n');
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return sb.toString();
-	}
-
-	private static boolean skip(String s) {
-		return s.startsWith("--") || s.trim().isEmpty();
-	}
-
-	public static String readSQLFile(String fName) {
-		return readSQLFile(fName, 0, 0);
-	}
-
-	public static void readSQLPredicateDefinitions(String schemaString, Schema schema) throws JSQLParserException {
-		Statements schemaStmts = CCJSqlParserUtil.parseStatements(schemaString);
-		for (Statement schemaStmt : schemaStmts.getStatements()) {
-			try {
-				CreateTable tbl = (CreateTable) schemaStmt;
-
-				// System.out.println("Table: "+tbl.getTable().getName());
-				String predicateName = tbl.getTable().getName();
-				LinkedList<String> attributes = new LinkedList<>();
-				for (ColumnDefinition cdef : tbl.getColumnDefinitions()) {
-					// System.out.println("+++ " + cdef.getColumnName());
-					attributes.add(cdef.getColumnName());
-				}
-				schema.addPredicateDefinition(new PredicateDefinition(predicateName, attributes));
-			} catch (ClassCastException c) {
-				System.err.println("\"" + schemaStmt + "\" is not a CREATE statement.");
-			}
-		}
-	}
-
-	public static boolean isSQLFile(String filename) {
-		/*
-		 * TODO create a regex containing all possible extensions and then check if the
-		 * name matches it
-		 */
-		return filename.endsWith("sql") || filename.endsWith("tpl");
 	}
 
 	public static <T> T[] shiftLeftResize(T[] v, int k) {
@@ -111,21 +37,8 @@ public class Util {
 		return Arrays.copyOf(v, v.length - k);
 	}
 
-	public static void writeToFile(File file, Select query, String outDir, int currQuery, int numQueries)
-			throws IOException {
-		String newFile = file.getName();
-		newFile = nextOutName(outDir, newFile, currQuery, numQueries);
-		System.out.println(newFile);
-		Path newFilePath = Paths.get(newFile);
-		Files.createDirectories(newFilePath.getParent());
-		if (!Files.exists(newFilePath))
-			Files.createFile(newFilePath);
-		Files.write(Paths.get(newFile), toFile(query), StandardCharsets.UTF_8);
-	}
-
 	public static void writeToFile(String filename, Statement query) throws IOException {
 		Path path = Paths.get(filename);
-		// Files.createDirectories(path.getParent());
 		if (!Files.exists(path))
 			Files.createFile(path);
 		Files.write(Paths.get(filename), toFile(query), StandardCharsets.UTF_8);
@@ -133,19 +46,9 @@ public class Util {
 
 	public static void writeToFile(String filename, Schema schema) throws IOException {
 		Path path = Paths.get(filename);
-		// Files.createDirectories(path.getParent());
 		if (!Files.exists(path))
 			Files.createFile(path);
 		Files.write(Paths.get(filename), toFile(schema), StandardCharsets.UTF_8);
-	}
-
-	public static void writeQueriesToFile(File file, List<Select> queries, String outDir, int nextID)
-			throws IOException {
-		for (Select query : queries) {
-			// System.out.println(query);
-			// System.out.println();
-			Util.writeToFile(file, query, outDir, nextID++, queries.size());
-		}
 	}
 
 	private static Iterable<String> toFile(Schema schema) {
@@ -183,7 +86,7 @@ public class Util {
 		return res;
 	}
 
-	private static String nextOutName(String outDir, String name, int curr, int tot) {
+	public static String makeNextFilename(String outDir, String name, int curr, int tot) {
 		String root = name.substring(0, name.lastIndexOf('.'));
 		String ext = name.substring(name.lastIndexOf('.') + 1);
 		String id = getID(curr, tot);
@@ -192,17 +95,19 @@ public class Util {
 
 	private static String getID(int curr, int size) {
 		int id = curr;
-		int dTot = 1, dR = 1;
-		int tot, r;
-		for (tot = size / 10; tot != 0; tot /= 10, dTot++) {
-		}
-		for (r = id / 10; r != 0; r /= 10, dR++) {
-		}
-		String prefix = "";
+		int dTot = 1;
+		int dR = 1;
+		int tot;
+		int r;
+		for (tot = size / 10; tot != 0; tot /= 10, dTot++)
+			;
+		for (r = id / 10; r != 0; r /= 10, dR++)
+			;
+		StringBuilder prefix = new StringBuilder(dTot - dR);
 		for (int i = 0; i < (dTot - dR); i++) {
-			prefix += "0";
+			prefix.append('0');
 		}
-		return prefix + id;
+		return prefix.toString() + id;
 	}
 
 	public static <T> List<T> deepCopy(List<T> list) {
@@ -235,13 +140,13 @@ public class Util {
 		return tableAliasName;
 	}
 
-	public static void loadSimpleMap(HashMap<String, String> map, String file, boolean keyToLowerCase,
+	public static void loadSimpleMap(Map<String, String> map, String file, boolean keyToLowerCase,
 			boolean valueToLowerCase) {
 		try (Stream<String> stream = Files.lines(Paths.get(file))) {
 			stream.forEach(new Consumer<String>() {
 				@Override
 				public void accept(String s) {
-					ArrayList<String> tks = splitCSVLine(s);
+					List<String> tks = splitCSVLine(s);
 					if (tks.size() != 2) {
 						String fError = "Error in file: " + file + "\n";
 						String lError = "Wrong line: " + s + "\n";
@@ -267,7 +172,7 @@ public class Util {
 		}
 	}
 
-	public static ArrayList<String> splitCSVLine(String line) {
+	public static List<String> splitCSVLine(String line) {
 		ArrayList<String> tks = new ArrayList<>();
 		boolean inQuotes = false;
 		int start = 0;
@@ -284,24 +189,22 @@ public class Util {
 		return tks;
 	}
 
-	public static void loadSimpleMap(HashMap<String, String> map, String file) {
+	public static void loadSimpleMap(Map<String, String> map, String file) {
 		loadSimpleMap(map, file, false, false);
 	}
 
-	public static void loadListMap(HashMap<String, LinkedList<String>> map, String file, boolean keyToLowerCase,
+	public static void loadListMap(Map<String, List<String>> map, String file, boolean keyToLowerCase,
 			boolean valueToLowerCase) {
 		try (Stream<String> stream = Files.lines(Paths.get(file))) {
 			stream.forEach(new Consumer<String>() {
 				@Override
 				public void accept(String s) {
-					ArrayList<String> tks = splitCSVLine(s);
+					List<String> tks = splitCSVLine(s);
 					String tab = tks.get(0);
 					if (keyToLowerCase) {
 						tab = tab.toLowerCase();
 					}
-					if (!map.containsKey(tab)) {
-						map.put(tab, new LinkedList<>());
-					}
+					map.computeIfAbsent(tab, k -> new LinkedList<>());
 					for (String tk : tks) {
 						String val = tk;
 						if (valueToLowerCase) {
@@ -316,7 +219,7 @@ public class Util {
 		}
 	}
 
-	public static void loadListMap(HashMap<String, LinkedList<String>> map, String file) {
+	public static void loadListMap(Map<String, List<String>> map, String file) {
 		loadListMap(map, file, false, false);
 	}
 
@@ -393,7 +296,6 @@ public class Util {
 
 	private static List<String> getEdgeList(File file) throws IOException {
 		String hg = String.join("", Files.readAllLines(file.toPath()));
-		// System.out.println(hg);
 
 		ArrayList<String> tks = new ArrayList<>();
 		boolean inPar = false;

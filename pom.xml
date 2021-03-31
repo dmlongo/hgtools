@@ -5,6 +5,12 @@
 	<artifactId>fhtw</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>fhtw</name>
+
+	<properties>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+	</properties>
+
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>

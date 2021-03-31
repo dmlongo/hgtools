@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.jgrapht.alg.util.UnionFind;
 
@@ -12,7 +13,7 @@ import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 
 public class HypergraphBuilder {
 
-	public final static String SEP = "_";
+	public static final String SEP = "_";
 
 	private static String getFullName(String table, String col) {
 		return table.equals("") ? col : table + SEP + col;
@@ -27,7 +28,7 @@ public class HypergraphBuilder {
 		h = new Hypergraph();
 		nextVar = 0;
 		colToVar = new HashMap<>();
-		vars = new UnionFind<String>(new HashSet<String>());
+		vars = new UnionFind<>(new HashSet<>());
 	}
 
 	public void buildEdge(Predicate table) {
@@ -84,7 +85,7 @@ public class HypergraphBuilder {
 		return h;
 	}
 
-	public HashMap<String, List<String>> getVarToColMapping() {
+	public Map<String, List<String>> getVarToColMapping() {
 		HashMap<String, List<String>> varToCol = new HashMap<>();
 		for (String col : colToVar.keySet()) {
 			String var = vars.find(colToVar.get(col));

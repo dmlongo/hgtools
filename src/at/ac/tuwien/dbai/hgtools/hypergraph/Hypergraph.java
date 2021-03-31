@@ -141,8 +141,8 @@ public class Hypergraph implements Writable {
 		return maxBip;
 	}
 
-	public int VCdimension() {
-		int maxVC = (int) Math.floor(((Math.log(cntEdges()) / Math.log(2))));
+	public int vcDimension() {
+		int maxVC = (int) Math.floor(Math.log(cntEdges()) / Math.log(2));
 		int i;
 
 		// Find the maximum cardinality of a shattered subset of V
@@ -188,30 +188,5 @@ public class Hypergraph implements Writable {
 
 		return i - 1;
 	}
-
-	/*
-	 * Implementation might have errors.
-	 * 
-	 * public int VCdimension() { boolean found = false; int maxVC = (int)
-	 * Math.floor(((Math.log(cntEdges())/Math.log(2)))); int vc;
-	 * 
-	 * for (vc = 1; vc <= maxVC; vc++ ) { found = false; CombinationIterator<String>
-	 * cit = new CombinationIterator<String>(vertices,vc); while (cit.hasNext() &&
-	 * !found) { PowerSetIterator<String> psetX = new
-	 * PowerSetIterator<String>(cit.next()); LinkedList<Integer> usedE = new
-	 * LinkedList<Integer>(); ArrayList<Edge> edges = new
-	 * ArrayList<Edge>(this.getEdges()); if (VCdimHelper(psetX,edges,usedE)) found =
-	 * true; } if (!found) return vc-1; }
-	 * 
-	 * 
-	 * return vc-1; }
-	 * 
-	 * private boolean VCdimHelper(PowerSetIterator<String> itPSetX, ArrayList<Edge>
-	 * edges, LinkedList<Integer> usedEdges) { if (itPSetX.hasNext()) { Set<String>
-	 * setX = itPSetX.next(); for (int i=0; i<edges.size() &&
-	 * !usedEdges.contains(i); i++) { if
-	 * (edges.get(i).getVertices().containsAll(setX)) { usedEdges.push(i); if
-	 * (VCdimHelper(itPSetX,edges,usedEdges)) { return true; } else {
-	 * usedEdges.pop(); } } } return false; } else return true; }
-	 */
+	
 }

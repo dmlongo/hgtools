@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jgrapht.Graph;
@@ -71,6 +72,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		nextID = 0;
 	}
 
+	private static String createViewName() {
+		return "anonymousView" + nextID++;
+	}
+
 	private Schema schema;
 	private NameStack resolver;
 	private ExprVisitor exprVisitor;
@@ -79,10 +84,10 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	private HashMap<String, String> nameToViewMap;
 	private HashMap<SelectBody, LinkedList<String>> selectToViewMap;
 	private HashMap<String, QueryExtractor> viewToGraphMap;
-	private LinkedList<SelectItem> viewSelectItems;
+	private List<SelectItem> viewSelectItems;
 
 	private String basePrefix;
-	private HashMap<SelectBody, String> prefixes;
+	private Map<SelectBody, String> prefixes;
 
 	private HashSet<String> viewsDefinedHere;
 
@@ -109,8 +114,8 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		tmpViews = new LinkedList<>();
 	}
 
-	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
-			HashMap<String, QueryExtractor> viewToGraphMap) {
+	public QueryExtractor(Schema schema, Map<String, String> nameToViewMap,
+			Map<String, QueryExtractor> viewToGraphMap) {
 		this(schema);
 		if (nameToViewMap == null) {
 			throw new NullPointerException();
@@ -119,14 +124,14 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		this.viewToGraphMap.putAll(viewToGraphMap);
 	}
 
-	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
-			HashMap<String, QueryExtractor> viewToGraphMap, LinkedList<SelectItem> viewSelItems) {
+	public QueryExtractor(Schema schema, Map<String, String> nameToViewMap, Map<String, QueryExtractor> viewToGraphMap,
+			List<SelectItem> viewSelItems) {
 		this(schema, nameToViewMap, viewToGraphMap);
 		this.viewSelectItems = viewSelItems;
 	}
 
-	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
-			HashMap<String, QueryExtractor> viewToGraphMap, String currPrefix, HashMap<SelectBody, String> prefixes) {
+	public QueryExtractor(Schema schema, Map<String, String> nameToViewMap, Map<String, QueryExtractor> viewToGraphMap,
+			String currPrefix, Map<SelectBody, String> prefixes) {
 		this(schema, nameToViewMap, viewToGraphMap);
 		if (currPrefix == null || prefixes == null) {
 			throw new NullPointerException();
@@ -135,9 +140,8 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		this.prefixes = prefixes; // aliasing - top qExtr will have all the names
 	}
 
-	public QueryExtractor(Schema schema, HashMap<String, String> nameToViewMap,
-			HashMap<String, QueryExtractor> viewToGraphMap, LinkedList<SelectItem> viewSelItems, String currPrefix,
-			HashMap<SelectBody, String> prefixes) {
+	public QueryExtractor(Schema schema, Map<String, String> nameToViewMap, Map<String, QueryExtractor> viewToGraphMap,
+			List<SelectItem> viewSelItems, String currPrefix, Map<SelectBody, String> prefixes) {
 		this(schema, nameToViewMap, viewToGraphMap, viewSelItems);
 		if (currPrefix == null || prefixes == null) {
 			throw new NullPointerException();
@@ -146,7 +150,6 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		this.prefixes = prefixes; // aliasing - top qExtr will have all the names
 	}
 
-	// TODO can be called only once, otherwise reset the state
 	public void run(Statement statement) {
 		statement.accept(this);
 	}
@@ -159,15 +162,15 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		return root;
 	}
 
-	public LinkedList<String> getGlobalNames() {
+	public List<String> getGlobalNames() {
 		return resolver.getGlobalNames();
 	}
 
-	public HashMap<SelectBody, LinkedList<String>> getSelectToViewMap() {
+	public Map<SelectBody, LinkedList<String>> getSelectToViewMap() {
 		return selectToViewMap;
 	}
 
-	public HashMap<String, QueryExtractor> getViewToGraphMap() {
+	public Map<String, QueryExtractor> getViewToGraphMap() {
 		return viewToGraphMap;
 	}
 
@@ -179,8 +182,16 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		return Collections.unmodifiableSet(viewsDefinedHere);
 	}
 
-	public HashMap<SelectBody, String> getPrefixes() {
+	public Map<SelectBody, String> getPrefixes() {
 		return prefixes;
+	}
+
+	static class NameAlreadyDefinedException extends RuntimeException {
+		private static final long serialVersionUID = 1143771857272323705L;
+
+		public NameAlreadyDefinedException(String name, String object) {
+			super(name + " already in " + object);
+		}
 	}
 
 	@Override
@@ -189,16 +200,16 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 		// test to check if view name already exists
 		if (viewsDefinedHere.contains(viewName)) {
-			throw new RuntimeException(viewName + " already in viewsDefinedHere");
+			throw new NameAlreadyDefinedException(viewName, "viewsDefinedHere");
 		}
 		if (viewToGraphMap.containsKey(viewName)) {
-			throw new RuntimeException(viewName + " already in viewToGraphMap");
+			throw new NameAlreadyDefinedException(viewName, "viewToGraphMap");
 		}
 
 		resolver.addNameToCurrentScope(viewName);
 		nameToViewMap.put(viewName, viewName);
 		viewsDefinedHere.add(viewName);
-		LinkedList<String> viewAttrs = new LinkedList<String>();
+		LinkedList<String> viewAttrs = new LinkedList<>();
 		LinkedList<SelectItem> viewSelItems = new LinkedList<>();
 
 		int numWithItems = 0;
@@ -240,64 +251,9 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 	@Override
 	public void visit(PlainSelect plainSelect) {
-		FromItem fromItem = plainSelect.getFromItem();
-		if (fromItem != null) {
-			if (fromItem instanceof SubSelect) {
-				SubSelect subSelect = (SubSelect) fromItem;
-				if (subSelect.getWithItemsList() != null) {
-					tmpViews = subSelect.getWithItemsList();
-				}
-				String aliasName = (fromItem.getAlias() != null) ? fromItem.getAlias().getName() : createViewName();
-				WithItem table = new WithItem();
-				table.setName(aliasName);
-				table.setSelectBody(subSelect.getSelectBody());
+		processFromItem(plainSelect.getFromItem());
 
-				subSelect.setAlias(new Alias(aliasName));
-
-				SelectBody curr = resolver.getCurrentSelect();
-				if (selectToViewMap.get(curr) == null) {
-					selectToViewMap.put(curr, new LinkedList<>());
-				}
-				selectToViewMap.get(curr).add(aliasName);
-
-				table.accept(this);
-			} else {
-				resolver.addTableToCurrentScope((Table) fromItem);
-				fromItem.accept(this);
-			}
-		}
-
-		if (plainSelect.getJoins() != null) {
-			for (Join join : plainSelect.getJoins()) {
-				FromItem joinItem = join.getRightItem();
-				if (joinItem instanceof SubSelect) {
-					SubSelect subSelect = (SubSelect) joinItem;
-					if (subSelect.getWithItemsList() != null) {
-						tmpViews = subSelect.getWithItemsList();
-					}
-					String aliasName = (joinItem.getAlias() != null) ? joinItem.getAlias().getName() : createViewName();
-					WithItem table = new WithItem();
-					table.setName(aliasName);
-					table.setSelectBody(subSelect.getSelectBody());
-
-					subSelect.setAlias(new Alias(aliasName));
-
-					SelectBody curr = resolver.getCurrentSelect();
-					if (selectToViewMap.get(curr) == null) {
-						selectToViewMap.put(curr, new LinkedList<>());
-					}
-					selectToViewMap.get(curr).add(aliasName);
-
-					table.accept(this);
-				} else {
-					resolver.addTableToCurrentScope((Table) joinItem);
-					joinItem.accept(this);
-				}
-				if (join.getOnExpression() != null) {
-					join.getOnExpression().accept(exprVisitor);
-				}
-			}
-		}
+		processJoins(plainSelect.getJoins());
 
 		if (plainSelect.getSelectItems() != null) {
 			for (SelectItem item : plainSelect.getSelectItems()) {
@@ -318,8 +274,63 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		}
 	}
 
-	private String createViewName() {
-		return "anonymousView" + nextID++;
+	private void processFromItem(FromItem fromItem) {
+		if (fromItem != null) {
+			if (fromItem instanceof SubSelect) {
+				SubSelect subSelect = (SubSelect) fromItem;
+				if (subSelect.getWithItemsList() != null) {
+					tmpViews = subSelect.getWithItemsList();
+				}
+				String aliasName = (fromItem.getAlias() != null) ? fromItem.getAlias().getName() : createViewName();
+				WithItem table = new WithItem();
+				table.setName(aliasName);
+				table.setSelectBody(subSelect.getSelectBody());
+
+				subSelect.setAlias(new Alias(aliasName));
+
+				SelectBody curr = resolver.getCurrentSelect();
+				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
+				selectToViewMap.get(curr).add(aliasName);
+
+				table.accept(this);
+			} else {
+				resolver.addTableToCurrentScope((Table) fromItem);
+				fromItem.accept(this);
+			}
+		}
+	}
+
+	private void processJoins(List<Join> joins) {
+		if (joins == null) {
+			return;
+		}
+		for (Join join : joins) {
+			FromItem joinItem = join.getRightItem();
+			if (joinItem instanceof SubSelect) {
+				SubSelect subSelect = (SubSelect) joinItem;
+				if (subSelect.getWithItemsList() != null) {
+					tmpViews = subSelect.getWithItemsList();
+				}
+				String aliasName = (joinItem.getAlias() != null) ? joinItem.getAlias().getName() : createViewName();
+				WithItem table = new WithItem();
+				table.setName(aliasName);
+				table.setSelectBody(subSelect.getSelectBody());
+
+				subSelect.setAlias(new Alias(aliasName));
+
+				SelectBody curr = resolver.getCurrentSelect();
+				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
+				selectToViewMap.get(curr).add(aliasName);
+
+				table.accept(this);
+			} else {
+				resolver.addTableToCurrentScope((Table) joinItem);
+				joinItem.accept(this);
+			}
+			if (join.getOnExpression() != null) {
+				join.getOnExpression().accept(exprVisitor);
+			}
+		}
 	}
 
 	@Override
@@ -399,32 +410,14 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			exprItem.setAlias(new Alias(aliasName));
 
 			SelectBody curr = resolver.getCurrentSelect();
-			if (selectToViewMap.get(curr) == null) {
-				selectToViewMap.put(curr, new LinkedList<>());
-			}
+			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
 			selectToViewMap.get(curr).add(aliasName);
 
 			table.accept(this);
 		} else {
 			// item.getExpression().accept(exprVisitor);
 		}
-		// things defined in the select cannot be used in the where, right?
-		// item.getExpression().accept(exprVisitor);
-		// The assumption is that I only need aliases, because the other attributes
-		// will be added in the FROM
-		/*
-		 * else { // can really attributes in functions be referenced in the body?
-		 * Set<String> names = extractNames(item.getExpression());
-		 * resolver.addNamesToCurrentScope(names); }
-		 */
 	}
-
-	/*
-	 * private Set<String> extractNames(Expression expression) { ColumnFinder cf =
-	 * new ColumnFinder(); Set<String> names = new HashSet<>(); for (Column col :
-	 * cf.getColumns(expression)) { names.add(col.getColumnName()); } return names;
-	 * }
-	 */
 
 	// FromItemVisitor
 	// every FromItem can have an Alias
@@ -468,9 +461,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		String tableAlias = getTableAliasName(tableName);
 		if (nameToViewMap.containsKey(tableAlias)) {
 			SelectBody curr = resolver.getCurrentSelect();
-			if (selectToViewMap.get(curr) == null) {
-				selectToViewMap.put(curr, new LinkedList<>());
-			}
+			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
 			selectToViewMap.get(curr).add(tableAlias);
 		}
 		resolver.addNameToCurrentScope(tableAlias);
@@ -634,7 +625,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 	public static class SubqueryEdge extends DefaultEdge {
 		private static final long serialVersionUID = -511975338046031776L;
 
-		static enum Operator {
+		enum Operator {
 			JOIN, IN, EXISTS, ANY, VIEW, FROM_SUBSELECT, OTHER
 		}
 
@@ -675,7 +666,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 		public String getLabel() {
 			StringBuilder sb = new StringBuilder(200);
-			sb.append(neg ? "not " : "");
+			sb.append(neg ? "not" : "");
 			sb.append(' ');
 			sb.append(op);
 			return sb.toString();
@@ -683,12 +674,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 
 		@Override
 		public String toString() {
-			StringBuilder sb = new StringBuilder(200);
-			sb.append(neg ? "not " : "");
-			sb.append(' ');
-			sb.append(op);
-			String label = sb.toString();
-			return "(" + getSource() + " : " + getTarget() + " : " + label + ")";
+			return "(" + getSource() + " : " + getTarget() + " : " + getLabel() + ")";
 		}
 	}
 

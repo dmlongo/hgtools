@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.SelectBody;
@@ -50,7 +51,7 @@ public class NameStack {
 		tables.getFirst().add(table);
 	}
 
-	public LinkedList<Table> getCurrentTables() {
+	public List<Table> getCurrentTables() {
 		return tables.getFirst();
 	}
 
@@ -80,7 +81,7 @@ public class NameStack {
 			return true;
 		}
 		for (int i = 0; i < setOpLists.size() - 1; i++) {
-			if (!setOpLists.get(i)) {
+			if (!Boolean.TRUE.equals(setOpLists.get(i))) {
 				return false;
 			}
 		}
@@ -97,7 +98,7 @@ public class NameStack {
 		}
 	}
 
-	public LinkedList<String> getGlobalNames() {
+	public List<String> getGlobalNames() {
 		return globalNames;
 	}
 

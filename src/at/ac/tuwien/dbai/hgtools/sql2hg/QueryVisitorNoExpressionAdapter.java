@@ -50,242 +50,202 @@ public class QueryVisitorNoExpressionAdapter
 
 	@Override
 	public void visit(Table tableName) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(SubSelect subSelect) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(SubJoin subjoin) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(LateralSubSelect lateralSubSelect) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ValuesList valuesList) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(TableFunction tableFunction) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ParenthesisFromItem aThis) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(AllColumns allColumns) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(AllTableColumns allTableColumns) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(SelectExpressionItem selectExpressionItem) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Comment comment) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Commit commit) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Delete delete) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Update update) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Insert insert) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Replace replace) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Drop drop) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Truncate truncate) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(CreateIndex createIndex) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(CreateTable createTable) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(CreateView createView) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(AlterView alterView) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Alter alter) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Statements stmts) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Execute execute) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(SetStatement set) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ShowColumnsStatement set) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Merge merge) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Select select) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Upsert upsert) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(UseStatement use) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(Block block) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ValuesStatement values) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(DescribeStatement describe) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ExplainStatement aThis) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(ShowStatement aThis) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(DeclareStatement aThis) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(PlainSelect plainSelect) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(SetOperationList setOpList) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 	@Override
 	public void visit(WithItem withItem) {
-		// TODO Auto-generated method stub
-
+		// empty implementation
 	}
 
 }

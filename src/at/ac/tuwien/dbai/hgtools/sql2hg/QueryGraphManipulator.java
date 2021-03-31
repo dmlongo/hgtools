@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jgrapht.Graph;
@@ -38,7 +39,6 @@ public class QueryGraphManipulator {
 		convertToIntGraph(pRes, qExtr, intToSelList, selToIntMap);
 		addViews(pRes, qExtr, intToSelList, selToIntMap);
 
-		// removeUselessEdges(pRes);
 		keepOnlyJoinEdges(pRes);
 
 		ArrayList<Integer> roots = new ArrayList<>();
@@ -69,7 +69,7 @@ public class QueryGraphManipulator {
 
 	private <T> LinkedList<T> bfsOrder(Graph<T, SubqueryEdge> query, T root) {
 		LinkedList<T> res = new LinkedList<>();
-		Iterator<T> it = new BreadthFirstIterator<T, SubqueryEdge>(query, root);
+		Iterator<T> it = new BreadthFirstIterator<>(query, root);
 		while (it.hasNext()) {
 			res.add(it.next());
 		}
@@ -111,16 +111,18 @@ public class QueryGraphManipulator {
 			HashMap<SelectBody, Integer> selToIntMap) {
 		Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure();
 		SelectBody root = qExtr.getRoot();
-		HashMap<SelectBody, LinkedList<String>> selectToViewMap = qExtr.getSelectToViewMap();
-		HashMap<String, QueryExtractor> viewToExtractor = qExtr.getViewToGraphMap();
+		Map<SelectBody, LinkedList<String>> selectToViewMap = qExtr.getSelectToViewMap();
+		Map<String, QueryExtractor> viewToExtractor = qExtr.getViewToGraphMap();
 
 		HashMap<String, Graph<Integer, SubqueryEdge>> viewToGraphMap = new HashMap<>();
 		HashMap<String, ArrayList<SelectBody>> viewToIntMapping = new HashMap<>();
-		for (String viewName : viewToExtractor.keySet()) {
+		for (Map.Entry<String, QueryExtractor> entry : viewToExtractor.entrySet()) {
+			String viewName = entry.getKey();
+			QueryExtractor vExtr = entry.getValue();
+
 			ArrayList<SelectBody> vIntToSelList = new ArrayList<>(query.vertexSet().size());
 			HashMap<SelectBody, Integer> vSelToIntMap = new HashMap<>();
 			Graph<Integer, SubqueryEdge> vRes = new DefaultDirectedGraph<>(SubqueryEdge.class);
-			QueryExtractor vExtr = viewToExtractor.get(viewName);
 			convertToIntGraph(vRes, vExtr, vIntToSelList, vSelToIntMap);
 			addViews(vRes, vExtr, vIntToSelList, vSelToIntMap);
 			viewToGraphMap.put(viewName, vRes);
@@ -187,21 +189,6 @@ public class QueryGraphManipulator {
 		}
 	}
 
-	/*
-	 * private void removeUselessEdges(Graph<Integer, SubqueryEdge> result) { class
-	 * ToRemove { public ToRemove(int source, int dest) { this.source = source;
-	 * this.dest = dest; }
-	 * 
-	 * int source; int dest; }
-	 * 
-	 * LinkedList<ToRemove> toRemove = new LinkedList<>(); for (SubqueryEdge e :
-	 * result.edgeSet()) { if (e.isOperatorNegated() ||
-	 * e.getOperator().equals(SubqueryEdge.Operator.OTHER)) { int source =
-	 * result.getEdgeSource(e); int dest = result.getEdgeTarget(e); toRemove.add(new
-	 * ToRemove(source, dest)); } } for (ToRemove edge : toRemove) {
-	 * result.removeEdge(edge.source, edge.dest); } }
-	 */
-
 	private List<Graph<Integer, SubqueryEdge>> computeConnComps(Graph<Integer, SubqueryEdge> result,
 			ArrayList<Integer> roots) {
 		List<Graph<Integer, SubqueryEdge>> comps = new LinkedList<>();
@@ -249,202 +236,4 @@ public class QueryGraphManipulator {
 		return f;
 	}
 
-	/**
-	 * private void expandGraph(Graph<SelectBody, SubqueryEdge> result, SelectBody
-	 * sRoot, Graph<SelectBody, SubqueryEdge> view, SelectBody vRoot) { // TODO
-	 * Auto-generated method stub HashSet<SelectBody> visited = new HashSet<>();
-	 * visited.add(vRoot); LinkedList<SelectBody> toVisit = new LinkedList<>();
-	 * toVisit.addFirst(sRoot); Iterator<SelectBody> viewIt = new
-	 * DepthFirstIterator<SelectBody, SubqueryEdge>(view, vRoot); while
-	 * (viewIt.hasNext()) { SelectBody vCurr = viewIt.next(); SelectBody currentRoot
-	 * = toVisit.removeFirst(); visited.add(currentRoot); for (SubqueryEdge e :
-	 * view.outgoingEdgesOf(vCurr)) { SelectBody dest = view.getEdgeTarget(e); if
-	 * (!dest.equals(vRoot) && !result.containsVertex(dest)) { // TODO ok, what if
-	 * the view is called again in a different select and dest it's // legitimately
-	 * another instance of the same select? I have to add the new // vertex // ok,
-	 * this graph doesn't admit duplicate vertices result.addVertex(dest); } if
-	 * (dest.equals(vRoot)) { result.addEdge(currentRoot, sRoot, e); } else {
-	 * result.addEdge(currentRoot, dest, e); } if (!visited.contains(dest)) {
-	 * toVisit.addFirst(dest); } } } }
-	 * 
-	 * private void addViews(QueryExtractor qExtr, Graph<SelectBody, SubqueryEdge>
-	 * result) { Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure();
-	 * SelectBody root = qExtr.getRoot(); HashMap<SelectBody, LinkedList<String>>
-	 * selectToViewMap = qExtr.getSelectToViewMap(); HashMap<String, QueryExtractor>
-	 * viewToExtractor = qExtr.getViewToGraphMap();
-	 * 
-	 * HashMap<String, Graph<SelectBody, SubqueryEdge>> viewToGraphMap = new
-	 * HashMap<>(); HashMap<String, SelectBody> viewToRootMap = new HashMap<>(); for
-	 * (String viewName : viewToExtractor.keySet()) { Graph<SelectBody,
-	 * SubqueryEdge> vRes = new DefaultDirectedGraph<>(SubqueryEdge.class);
-	 * QueryExtractor vExtr = viewToExtractor.get(viewName); Graphs.addGraph(vRes,
-	 * vExtr.getQueryStructure()); addViews(vExtr, vRes);
-	 * viewToGraphMap.put(viewName, vRes); viewToRootMap.put(viewName,
-	 * vExtr.getRoot()); }
-	 * 
-	 * Iterator<SelectBody> it = new DepthFirstIterator<>(query, root); while
-	 * (it.hasNext()) { SelectBody select = it.next(); if
-	 * (selectToViewMap.containsKey(select)) { for (String viewName :
-	 * selectToViewMap.get(select)) { Graph<SelectBody, SubqueryEdge> v =
-	 * viewToGraphMap.get(viewName); SelectBody vRoot = viewToRootMap.get(viewName);
-	 * expandGraph(result, select, v, vRoot); } } } }
-	 * 
-	 * private void expandGraph(Graph<SelectBody, SubqueryEdge> result, SelectBody
-	 * sRoot, Graph<SelectBody, SubqueryEdge> view, SelectBody vRoot) { // TODO
-	 * Auto-generated method stub HashSet<SelectBody> visited = new HashSet<>();
-	 * visited.add(vRoot); LinkedList<SelectBody> toVisit = new LinkedList<>();
-	 * toVisit.addFirst(sRoot); Iterator<SelectBody> viewIt = new
-	 * DepthFirstIterator<SelectBody, SubqueryEdge>(view, vRoot); while
-	 * (viewIt.hasNext()) { SelectBody vCurr = viewIt.next(); SelectBody currentRoot
-	 * = toVisit.removeFirst(); visited.add(currentRoot); for (SubqueryEdge e :
-	 * view.outgoingEdgesOf(vCurr)) { SelectBody dest = view.getEdgeTarget(e); if
-	 * (!dest.equals(vRoot) && !result.containsVertex(dest)) { // TODO ok, what if
-	 * the view is called again in a different select and dest it's // legitimately
-	 * another instance of the same select? I have to add the new // vertex // ok,
-	 * this graph doesn't admit duplicate vertices result.addVertex(dest); } if
-	 * (dest.equals(vRoot)) { result.addEdge(currentRoot, sRoot, e); } else {
-	 * result.addEdge(currentRoot, dest, e); } if (!visited.contains(dest)) {
-	 * toVisit.addFirst(dest); } } } }
-	 * 
-	 * public List<Graph<SelectBody, SubqueryEdge>> computeDependencyGraphs() {
-	 * Graph<SelectBody, SubqueryEdge> step1 = new
-	 * DefaultDirectedGraph<>(SubqueryEdge.class);
-	 * 
-	 * // setup Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure();
-	 * Graphs.addGraph(step1, query); addViews(qExtr, step1);
-	 * 
-	 * HashMap<SelectBody, Integer> selToIntMap = new HashMap<>();
-	 * ArrayList<SelectBody> intToSelMap = new ArrayList<>(); Graph<Integer,
-	 * SubqueryEdge> step2 = substituteSelectBodies(step1, selToIntMap,
-	 * intToSelMap); removeUselessEdges(step2);
-	 * 
-	 * ArrayList<Integer> roots = new ArrayList<>(); List<Graph<Integer,
-	 * SubqueryEdge>> comps = computeConnComps(step2, roots); int i = 0;
-	 * LinkedList<Graph<SelectBody, SubqueryEdge>> results = new LinkedList<>(); for
-	 * (Graph<Integer, SubqueryEdge> g : comps) { // Graph<SelectBody, SubqueryEdge>
-	 * simpleG = simplify(g, roots.get(i++)); Graph<SelectBody, SubqueryEdge>
-	 * simpleG = substituteBack(g, intToSelMap); results.add(simpleG); } return
-	 * results; }
-	 * 
-	 * private LinkedList<Graph<SelectBody, SubqueryEdge>> substituteBack(
-	 * LinkedList<Graph<Integer, SubqueryEdge>> preResults, ArrayList<SelectBody>
-	 * intToSelMap) { LinkedList<Graph<SelectBody, SubqueryEdge>> output = new
-	 * LinkedList<>(); for (Graph<Integer, SubqueryEdge> g : preResults) {
-	 * Graph<SelectBody, SubqueryEdge> f = substituteBack(g, intToSelMap);
-	 * output.add(f); } return output; }
-	 * 
-	 * private Graph<Integer, SubqueryEdge> substituteSelectBodies(Graph<SelectBody,
-	 * SubqueryEdge> step1, HashMap<SelectBody, Integer> selToIntMap,
-	 * ArrayList<SelectBody> intToSelMap) { Graph<Integer, SubqueryEdge> g = new
-	 * DefaultDirectedGraph<>(SubqueryEdge.class); Iterator<SelectBody> it = new
-	 * DepthFirstIterator<>(step1, qExtr.getRoot()); while (it.hasNext()) {
-	 * SelectBody sel = it.next(); int id = intToSelMap.size();
-	 * intToSelMap.add(sel); selToIntMap.put(sel, id); g.addVertex(id); } for
-	 * (SubqueryEdge e : step1.edgeSet()) { int sourceID =
-	 * selToIntMap.get(step1.getEdgeSource(e)); int destID =
-	 * selToIntMap.get(step1.getEdgeTarget(e)); g.addEdge(sourceID, destID, e); }
-	 * return g; }
-	 * 
-	 * private Graph<SelectBody, SubqueryEdge> simplify(Graph<Integer, SubqueryEdge>
-	 * f, int root) { // TODO Auto-generated method stub Graph<SelectBody,
-	 * SubqueryEdge> output = new DefaultDirectedGraph<>(SubqueryEdge.class);
-	 * 
-	 * ArrayList<PlainSelect> selects = new ArrayList<>(f.vertexSet().size());
-	 * List<Integer> ordVertices =
-	 * f.vertexSet().stream().collect(Collectors.toList());
-	 * Collections.sort(ordVertices); for (int v : ordVertices) {
-	 * 
-	 * PlainSelect s = new PlainSelect(); s.addSelectItems(new
-	 * SelectExpressionItem(new Column("" + v))); selects.add(v, s);
-	 * output.addVertex(s); } for (SubqueryEdge e : f.edgeSet()) { int v =
-	 * f.getEdgeSource(e); int w = f.getEdgeTarget(e);
-	 * output.addEdge(selects.get(v), selects.get(w)); }
-	 * 
-	 * return output; }
-	 * 
-	 * private void setup(Graph<SelectBody, SubqueryEdge> result) {
-	 * Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure();
-	 * Graphs.addGraph(result, query);
-	 * 
-	 * // // ArrayList<SelectBody> vertices = new
-	 * ArrayList<>(query.vertexSet().size()); // for (SelectBody v :
-	 * query.vertexSet()) { vertices.add(v); // result.addVertex(v); } // // for
-	 * (int i = 0; i < vertices.size() - 1; i++) { for (int j = i + 1; j < //
-	 * vertices.size(); j++) { SelectBody sourceVertex = vertices.get(i); SelectBody
-	 * // targetVertex = vertices.get(j); if (query.containsEdge(sourceVertex, //
-	 * targetVertex)) { SubqueryEdge e = query.getEdge(sourceVertex, targetVertex);
-	 * // result.addEdge(sourceVertex, targetVertex, e); } if //
-	 * (query.containsEdge(targetVertex, sourceVertex)) { SubqueryEdge e = //
-	 * query.getEdge(targetVertex, sourceVertex); result.addEdge(targetVertex, //
-	 * sourceVertex, e); } } } // }
-	 * 
-	 * private void addViews(QueryExtractor qExtr, Graph<SelectBody, SubqueryEdge>
-	 * result) { Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure();
-	 * SelectBody root = qExtr.getRoot(); HashMap<SelectBody, LinkedList<String>>
-	 * selectToViewMap = qExtr.getSelectToViewMap(); HashMap<String, QueryExtractor>
-	 * viewToExtractor = qExtr.getViewToGraphMap();
-	 * 
-	 * HashMap<String, Graph<SelectBody, SubqueryEdge>> viewToGraphMap = new
-	 * HashMap<>(); HashMap<String, SelectBody> viewToRootMap = new HashMap<>(); for
-	 * (String viewName : viewToExtractor.keySet()) { Graph<SelectBody,
-	 * SubqueryEdge> vRes = new DefaultDirectedGraph<>(SubqueryEdge.class);
-	 * QueryExtractor vExtr = viewToExtractor.get(viewName); Graphs.addGraph(vRes,
-	 * vExtr.getQueryStructure()); addViews(vExtr, vRes);
-	 * viewToGraphMap.put(viewName, vRes); viewToRootMap.put(viewName,
-	 * vExtr.getRoot()); }
-	 * 
-	 * Iterator<SelectBody> it = new DepthFirstIterator<>(query, root); while
-	 * (it.hasNext()) { SelectBody select = it.next(); if
-	 * (selectToViewMap.containsKey(select)) { for (String viewName :
-	 * selectToViewMap.get(select)) { Graph<SelectBody, SubqueryEdge> v =
-	 * viewToGraphMap.get(viewName); SelectBody vRoot = viewToRootMap.get(viewName);
-	 * expandGraph(result, select, v, vRoot); } } } }
-	 * 
-	 * private void expandGraph(Graph<SelectBody, SubqueryEdge> result, SelectBody
-	 * sRoot, Graph<SelectBody, SubqueryEdge> view, SelectBody vRoot) { // TODO
-	 * Auto-generated method stub HashSet<SelectBody> visited = new HashSet<>();
-	 * visited.add(vRoot); LinkedList<SelectBody> toVisit = new LinkedList<>();
-	 * toVisit.addFirst(sRoot); Iterator<SelectBody> viewIt = new
-	 * DepthFirstIterator<SelectBody, SubqueryEdge>(view, vRoot); while
-	 * (viewIt.hasNext()) { SelectBody vCurr = viewIt.next(); SelectBody currentRoot
-	 * = toVisit.removeFirst(); visited.add(currentRoot); for (SubqueryEdge e :
-	 * view.outgoingEdgesOf(vCurr)) { SelectBody dest = view.getEdgeTarget(e); if
-	 * (!dest.equals(vRoot) && !result.containsVertex(dest)) { // TODO ok, what if
-	 * the view is called again in a different select and dest it's // legitimately
-	 * another instance of the same select? I have to add the new // vertex // ok,
-	 * this graph doesn't admit duplicate vertices result.addVertex(dest); } if
-	 * (dest.equals(vRoot)) { result.addEdge(currentRoot, sRoot, e); } else {
-	 * result.addEdge(currentRoot, dest, e); } if (!visited.contains(dest)) {
-	 * toVisit.addFirst(dest); } } } }
-	 * 
-	 * private void addViews(Graph<SelectBody, SubqueryEdge> result) {
-	 * Graph<SelectBody, SubqueryEdge> query = qExtr.getQueryStructure(); SelectBody
-	 * root = qExtr.getRoot(); HashMap<SelectBody, LinkedList<String>>
-	 * selectToViewMap = qExtr.getSelectToViewMap(); HashMap<String, QueryExtractor>
-	 * viewToGraphMap = qExtr.getViewToGraphMap(); for (QueryExtractor vExtr :
-	 * viewToGraphMap.values()) {
-	 * 
-	 * }
-	 * 
-	 * Iterator<SelectBody> it = new DepthFirstIterator<>(query, root); while
-	 * (it.hasNext()) { SelectBody select = it.next(); if
-	 * (selectToViewMap.containsKey(select)) { for (String viewName :
-	 * selectToViewMap.get(select)) { QueryExtractor vExtr =
-	 * viewToGraphMap.get(viewName); Graph<SelectBody, SubqueryEdge> view =
-	 * vExtr.getQueryStructure(); SelectBody vRoot = vExtr.getRoot();
-	 * HashSet<SelectBody> visited = new HashSet<>(); visited.add(vRoot);
-	 * LinkedList<SelectBody> toVisit = new LinkedList<>();
-	 * toVisit.addFirst(select); Iterator<SelectBody> viewIt = new
-	 * DepthFirstIterator<SelectBody, SubqueryEdge>(view, vRoot); while
-	 * (viewIt.hasNext()) { SelectBody vCurr = viewIt.next(); SelectBody currentRoot
-	 * = toVisit.removeFirst(); visited.add(currentRoot); for (SubqueryEdge e :
-	 * view.outgoingEdgesOf(vCurr)) { SelectBody dest = view.getEdgeTarget(e); if
-	 * (!dest.equals(vRoot) && !result.containsVertex(dest)) { // TODO ok, what if
-	 * the view is called again in a different select and dest it's // legitimately
-	 * another instance of the same select? I have to add the new // vertex
-	 * result.addVertex(dest); } if (dest.equals(vRoot)) {
-	 * result.addEdge(currentRoot, select, e); } else { result.addEdge(currentRoot,
-	 * dest, e); } if (!visited.contains(dest)) { toVisit.addFirst(dest); } } } } }
-	 * } }
-	 */
 }

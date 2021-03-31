@@ -10,6 +10,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
+import at.ac.tuwien.dbai.hgtools.util.SqlUtils;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -28,8 +29,8 @@ public class MainStats {
 		MainStats.type = type;
 		if (type.equals(Main.SQL)) {
 			schema = new Schema();
-			String schemaString = Util.readSQLFile(args[z++]);
-			Util.readSQLPredicateDefinitions(schemaString, schema);
+			String schemaString = SqlUtils.readFile(args[z++]);
+			SqlUtils.readPredicateDefinitions(schemaString, schema);
 		}
 
 		System.out.println("filename;vertices;edges;degree;bip;b3ip;b4ip;vc");
@@ -62,14 +63,14 @@ public class MainStats {
 				System.out.print(h.cntBip(2) + SEPARATOR);
 				System.out.print(h.cntBip(3) + SEPARATOR);
 				System.out.print(h.cntBip(4) + SEPARATOR);
-				System.out.println(h.VCdimension());
+				System.out.println(h.vcDimension());
 			}
 		}
 	}
 
 	private static boolean isFileTypeOk(File file) {
 		if (type.equals(Main.SQL)) {
-			return Util.isSQLFile(file.getName());
+			return SqlUtils.isSQLFile(file.getName());
 		} else if (type.equals(Main.XCSP)) {
 			return file.getName().contains("xml");
 		} else if (type.equals(Main.HG)) {
@@ -93,7 +94,7 @@ public class MainStats {
 	}
 
 	private static Hypergraph buildHypergraphFromSQL(File file) throws JSQLParserException {
-		String sqlString = Util.readSQLFile(file.getPath());
+		String sqlString = SqlUtils.readFile(file.getPath());
 		Statement stmt = CCJSqlParserUtil.parse(sqlString);
 		Select selectStmt = (Select) stmt;
 		ConjunctiveQueryFinder hgFinder = new ConjunctiveQueryFinder(schema);

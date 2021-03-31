@@ -8,7 +8,7 @@ import java.util.List;
 
 public class SimplePredicate implements Predicate {
 
-	public final static String SEP = "_";
+	public static final String SEP = "_";
 
 	protected PredicateDefinition definition;
 	protected String alias;
@@ -249,7 +249,8 @@ public class SimplePredicate implements Predicate {
 	}
 
 	public static void main(String[] args) {
-		PredicateDefinition leaf1Def = new PredicateDefinition("leaf1", new String[] { "attr1", "attr2", "attr3" });
+		final String leafName1 = "leaf1";
+		PredicateDefinition leaf1Def = new PredicateDefinition(leafName1, new String[] { "attr1", "attr2", "attr3" });
 		PredicateDefinition leaf2Def = new PredicateDefinition("leaf2", new String[] { "col1", "col2" });
 		PredicateDefinition leaf3Def = new PredicateDefinition("leaf3", new String[] { "id", "name", "surname" });
 
@@ -271,7 +272,7 @@ public class SimplePredicate implements Predicate {
 		PredicateDefinition view2Def = new PredicateDefinition("view2", new String[] { "vAttr1", "vAttr2", "vAttr3" });
 		ViewPredicate view2 = new ViewPredicate(view2Def);
 		view2.addDefiningPredicates(leaf1, view1);
-		view2.defineAttribute("vAttr1", "leaf1", "attr2");
+		view2.defineAttribute("vAttr1", leafName1, "attr2");
 		view2.defineAttribute("vAttr2", "view1", "alias2");
 		view2.defineAttribute("vAttr3", "view1", "alias1");
 		System.out.println(view2);

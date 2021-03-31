@@ -1,6 +1,6 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-public class BasePredicate extends SimplePredicate implements Predicate {
+public class BasePredicate extends SimplePredicate {
 
 	public BasePredicate(PredicateDefinition def, String alias) {
 		super(def, alias);
