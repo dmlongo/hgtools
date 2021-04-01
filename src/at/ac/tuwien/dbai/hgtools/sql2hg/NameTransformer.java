@@ -1,6 +1,8 @@
-package at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare;
+package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
+import java.util.LinkedList;
+
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
@@ -9,6 +11,8 @@ import net.sf.jsqlparser.statement.create.view.CreateView;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.OrderByVisitor;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
@@ -18,36 +22,29 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SelectVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SetOperationList;
+import net.sf.jsqlparser.statement.select.SubJoin;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import net.sf.jsqlparser.statement.select.WithItem;
 
-public class TableReplacer {
+public abstract class NameTransformer {
 
 	private StatVisitor vStatement = new StatVisitor();
 	private SelVisitor vSelect = new SelVisitor();
 	private SelItVisitor vSelectItem = new SelItVisitor();
 	private FromItVisitor vFromItem = new FromItVisitor();
 	private ExprVisitor vExpression = new ExprVisitor();
+	private OrderByVisitor vOrderBy = new OrdByVisitor();
 
-	private String oldName = null;
-	private String newName = null;
-
-	public void replace(Statement stmt, String oldName, String newName) {
-		this.oldName = oldName;
-		this.newName = newName;
+	public void run(Statement stmt) {
 		stmt.accept(vStatement);
 	}
+
+	protected abstract String transform(String s);
 
 	private class SelVisitor extends SelectVisitorAdapter {
 
 		@Override
 		public void visit(PlainSelect plainSelect) {
-			if (plainSelect.getSelectItems() != null) {
-				for (SelectItem item : plainSelect.getSelectItems()) {
-					item.accept(vSelectItem);
-				}
-			}
-
 			if (plainSelect.getFromItem() != null) {
 				plainSelect.getFromItem().accept(vFromItem);
 			}
@@ -62,12 +59,20 @@ public class TableReplacer {
 				}
 			}
 
+			if (plainSelect.getSelectItems() != null) {
+				plainSelect.getSelectItems().forEach(item -> item.accept(vSelectItem));
+			}
+
 			if (plainSelect.getWhere() != null) {
 				plainSelect.getWhere().accept(vExpression);
 			}
 
 			if (plainSelect.getHaving() != null) {
 				plainSelect.getHaving().accept(vExpression);
+			}
+
+			if (plainSelect.getOrderByElements() != null) {
+				plainSelect.getOrderByElements().forEach(obe -> obe.accept(vOrderBy));
 			}
 		}
 
@@ -82,14 +87,14 @@ public class TableReplacer {
 
 		@Override
 		public void visit(WithItem withItem) {
+			String name = withItem.getName();
+			withItem.setName(transform(name));
 			if (withItem.getWithItemList() != null) {
 				for (SelectItem item : withItem.getWithItemList()) {
-					item.accept(vExpression);
+					item.accept(vSelectItem);
 				}
 			}
-			if (withItem.getSelectBody() != null) {
-				withItem.getSelectBody().accept(this);
-			}
+			withItem.getSelectBody().accept(vSelect);
 		}
 
 	}
@@ -98,14 +103,15 @@ public class TableReplacer {
 
 		@Override
 		public void visit(AllTableColumns columns) {
-			Table t = columns.getTable();
-			if (t != null && t.getName().equals(oldName)) {
-				t.setName(newName);
-			}
+			columns.getTable().accept(vFromItem);
 		}
 
 		@Override
 		public void visit(SelectExpressionItem item) {
+			if (item.getAlias() != null) {
+				String alias = item.getAlias().getName();
+				item.setAlias(new Alias(transform(alias)));
+			}
 			item.accept(vExpression);
 		}
 
@@ -115,25 +121,55 @@ public class TableReplacer {
 
 		@Override
 		public void visit(Table table) {
-			if (table.getName().equals(oldName)) {
-				table.setName(newName);
+			String name = table.getName();
+			table.setName(transform(name));
+			if (table.getAlias() != null) {
+				String alias = table.getAlias().getName();
+				table.setAlias(new Alias(transform(alias)));
 			}
 		}
 
 		@Override
 		public void visit(SubSelect subSelect) {
+			if (subSelect.getAlias() != null) {
+				String alias = subSelect.getAlias().getName();
+				subSelect.setAlias(new Alias(transform(alias)));
+			}
 			if (subSelect.getWithItemsList() != null) {
 				for (WithItem item : subSelect.getWithItemsList()) {
 					item.accept(vSelect);
 				}
 			}
-			if (subSelect.getSelectBody() != null) {
-				subSelect.getSelectBody().accept(vSelect);
+			subSelect.getSelectBody().accept(vSelect);
+		}
+
+		@Override
+		public void visit(SubJoin subjoin) {
+			if (subjoin.getAlias() != null) {
+				String alias = subjoin.getAlias().getName();
+				subjoin.setAlias(new Alias(transform(alias)));
+			}
+			if (subjoin.getLeft() != null) {
+				subjoin.getLeft().accept(this);
+			}
+			if (subjoin.getJoinList() != null) {
+				for (Join j : subjoin.getJoinList()) {
+					if (j.getRightItem() != null) {
+						j.getRightItem().accept(this);
+					}
+					if (j.getOnExpression() != null) {
+						j.getOnExpression().accept(vExpression);
+					}
+				}
 			}
 		}
 
 		@Override
 		public void visit(ParenthesisFromItem aThis) {
+			if (aThis.getAlias() != null) {
+				String alias = aThis.getAlias().getName();
+				aThis.setAlias(new Alias(transform(alias)));
+			}
 			if (aThis.getFromItem() != null) {
 				aThis.getFromItem().accept(this);
 			}
@@ -149,10 +185,25 @@ public class TableReplacer {
 
 		@Override
 		public void visit(Column column) {
-			Table t = column.getTable();
-			if (t != null && t.getName().equals(oldName)) {
-				t.setName(newName);
+			if (column.getTable() != null) {
+				column.getTable().accept(vFromItem);
 			}
+			String name = column.getColumnName();
+			column.setColumnName(transform(name));
+		}
+
+		@Override
+		public void visit(SubSelect subSelect) {
+			if (subSelect.getAlias() != null) {
+				String alias = subSelect.getAlias().getName();
+				subSelect.setAlias(new Alias(transform(alias)));
+			}
+			if (subSelect.getWithItemsList() != null) {
+				for (WithItem item : subSelect.getWithItemsList()) {
+					item.accept(vSelect);
+				}
+			}
+			subSelect.getSelectBody().accept(vSelect);
 		}
 
 	}
@@ -171,7 +222,27 @@ public class TableReplacer {
 
 		@Override
 		public void visit(CreateView createView) {
+			String name = createView.getView().getName();
+			createView.getView().setName(transform(name));
+			if (createView.getColumnNames() != null) {
+				LinkedList<String> colNames = new LinkedList<>();
+				for (String col : createView.getColumnNames()) {
+					colNames.add(transform(col));
+				}
+				createView.setColumnNames(colNames);
+			}
 			createView.getSelect().accept(this);
+		}
+
+	}
+
+	private class OrdByVisitor implements OrderByVisitor {
+
+		@Override
+		public void visit(OrderByElement orderBy) {
+			if (orderBy.getExpression() != null) {
+				orderBy.getExpression().accept(vExpression);
+			}
 		}
 
 	}

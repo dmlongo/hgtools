@@ -1,6 +1,5 @@
-package at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare;
+package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;

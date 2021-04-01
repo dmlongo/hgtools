@@ -5,8 +5,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class Writables {
 
@@ -73,6 +76,26 @@ public class Writables {
         if (!Files.exists(filePath))
             Files.createFile(filePath);
         Files.write(filePath, w.toFile(), StandardCharsets.UTF_8);
+    }
+
+    public static void writeToFile(Map<String, List<String>> mapping, String filename) throws IOException {
+        writeToFile(() -> {
+            ArrayList<String> lines = new ArrayList<>(mapping.size());
+            for (Map.Entry<String, List<String>> entry : mapping.entrySet()) {
+                StringBuilder sb = new StringBuilder(100);
+                sb.append(entry.getKey());
+                sb.append('=');
+                Iterator<String> it = entry.getValue().iterator();
+                while (it.hasNext()) {
+                    sb.append(it.next());
+                    if (it.hasNext()) {
+                        sb.append(',');
+                    }
+                }
+                lines.add(sb.toString());
+            }
+            return lines;
+        }, filename);
     }
 
 }

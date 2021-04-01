@@ -58,14 +58,13 @@ public class PredicateDefinition implements Iterable<String> {
 	}
 
 	public Attribute getAttribute(String attr) {
-		// TODO returns null if attr doesn't exist
 		return attributes.get(new Attribute(attr));
 	}
 
 	public List<String> getAttributes() {
 		return orderAttributes();
 	}
-	
+
 	public int getPosition(String attr) {
 		return attributes.get(new Attribute(attr)).getPosition();
 	}
@@ -79,8 +78,7 @@ public class PredicateDefinition implements Iterable<String> {
 	private List<String> orderAttributes() {
 		ArrayList<Attribute> entries = new ArrayList<>(attributes.keySet());
 		Collections.sort(entries);
-		// TODO rewrite it using lambda functions
-		ArrayList<String> ordered = new ArrayList<String>(entries.size());
+		ArrayList<String> ordered = new ArrayList<>(entries.size());
 		for (Attribute attr : entries) {
 			ordered.add(attr.getName());
 		}

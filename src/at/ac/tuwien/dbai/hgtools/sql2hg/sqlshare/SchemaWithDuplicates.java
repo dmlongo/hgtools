@@ -3,6 +3,7 @@ package at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
@@ -18,6 +19,7 @@ public class SchemaWithDuplicates extends Schema {
 		definitions = new HashMap<>();
 	}
 
+	@Override
 	public void addPredicateDefinition(PredicateDefinition predDef) {
 		if (predDef == null) {
 			throw new NullPointerException();
@@ -57,7 +59,7 @@ public class SchemaWithDuplicates extends Schema {
 		throw new UnsupportedOperationException();
 	}
 
-	public LinkedList<PredicateDefinition> getPredicateDefinitions(String predDef) {
+	public List<PredicateDefinition> getPredicateDefinitions(String predDef) {
 		return definitions.get(predDef.toLowerCase());
 	}
 
@@ -71,7 +73,7 @@ public class SchemaWithDuplicates extends Schema {
 		throw new UnsupportedOperationException();
 	}
 
-	public LinkedList<PredicateDefinition> existsAttributeInPredicateDefinitions(String attr, String predDef) {
+	public List<PredicateDefinition> existsAttributeInPredicateDefinitions(String attr, String predDef) {
 		LinkedList<PredicateDefinition> res = new LinkedList<>();
 		LinkedList<PredicateDefinition> defs = definitions.get(predDef.toLowerCase());
 		for (PredicateDefinition pDef : defs) {

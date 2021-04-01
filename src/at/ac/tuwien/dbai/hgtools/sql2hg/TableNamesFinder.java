@@ -1,48 +1,50 @@
-package at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare;
+package at.ac.tuwien.dbai.hgtools.sql2hg;
 
-import java.util.LinkedList;
+import java.util.HashSet;
+import java.util.Set;
 
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
-import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.statement.create.view.CreateView;
-import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.ParenthesisFromItem;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SelectItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SelectVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.SubJoin;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import net.sf.jsqlparser.statement.select.WithItem;
 
-public abstract class NameTransformer {
+public class TableNamesFinder {
 
 	private StatVisitor vStatement = new StatVisitor();
 	private SelVisitor vSelect = new SelVisitor();
-	private SelItVisitor vSelectItem = new SelItVisitor();
 	private FromItVisitor vFromItem = new FromItVisitor();
 	private ExprVisitor vExpression = new ExprVisitor();
 
-	public void run(Statement stmt) {
-		stmt.accept(vStatement);
-	}
+	private HashSet<String> tables = null;
 
-	protected abstract String transform(String s);
+	public Set<String> findTables(Statement stmt) {
+		tables = new HashSet<>();
+		stmt.accept(vStatement);
+		return tables;
+	}
 
 	private class SelVisitor extends SelectVisitorAdapter {
 
 		@Override
 		public void visit(PlainSelect plainSelect) {
+			if (plainSelect.getSelectItems() != null) {
+				for (SelectItem item : plainSelect.getSelectItems()) {
+					item.accept(vExpression);
+				}
+			}
+
 			if (plainSelect.getFromItem() != null) {
 				plainSelect.getFromItem().accept(vFromItem);
 			}
@@ -57,12 +59,6 @@ public abstract class NameTransformer {
 				}
 			}
 
-			if (plainSelect.getSelectItems() != null) {
-				for (SelectItem item : plainSelect.getSelectItems()) {
-					item.accept(vSelectItem);
-				}
-			}
-
 			if (plainSelect.getWhere() != null) {
 				plainSelect.getWhere().accept(vExpression);
 			}
@@ -70,8 +66,6 @@ public abstract class NameTransformer {
 			if (plainSelect.getHaving() != null) {
 				plainSelect.getHaving().accept(vExpression);
 			}
-
-			// TODO order by
 		}
 
 		@Override
@@ -85,32 +79,12 @@ public abstract class NameTransformer {
 
 		@Override
 		public void visit(WithItem withItem) {
-			String name = withItem.getName();
-			withItem.setName(transform(name));
 			if (withItem.getWithItemList() != null) {
 				for (SelectItem item : withItem.getWithItemList()) {
-					item.accept(vSelectItem);
+					item.accept(vExpression);
 				}
 			}
-			withItem.getSelectBody().accept(vSelect);
-		}
-
-	}
-
-	private class SelItVisitor extends SelectItemVisitorAdapter {
-
-		@Override
-		public void visit(AllTableColumns columns) {
-			columns.getTable().accept(vFromItem);
-		}
-
-		@Override
-		public void visit(SelectExpressionItem item) {
-			if (item.getAlias() != null) {
-				String alias = item.getAlias().getName();
-				item.setAlias(new Alias(transform(alias)));
-			}
-			item.accept(vExpression);
+			withItem.getSelectBody().accept(this);
 		}
 
 	}
@@ -119,20 +93,11 @@ public abstract class NameTransformer {
 
 		@Override
 		public void visit(Table table) {
-			String name = table.getName();
-			table.setName(transform(name));
-			if (table.getAlias() != null) {
-				String alias = table.getAlias().getName();
-				table.setAlias(new Alias(transform(alias)));
-			}
+			tables.add(table.getName());
 		}
 
 		@Override
 		public void visit(SubSelect subSelect) {
-			if (subSelect.getAlias() != null) {
-				String alias = subSelect.getAlias().getName();
-				subSelect.setAlias(new Alias(transform(alias)));
-			}
 			if (subSelect.getWithItemsList() != null) {
 				for (WithItem item : subSelect.getWithItemsList()) {
 					item.accept(vSelect);
@@ -143,10 +108,6 @@ public abstract class NameTransformer {
 
 		@Override
 		public void visit(SubJoin subjoin) {
-			if (subjoin.getAlias() != null) {
-				String alias = subjoin.getAlias().getName();
-				subjoin.setAlias(new Alias(transform(alias)));
-			}
 			if (subjoin.getLeft() != null) {
 				subjoin.getLeft().accept(this);
 			}
@@ -164,10 +125,6 @@ public abstract class NameTransformer {
 
 		@Override
 		public void visit(ParenthesisFromItem aThis) {
-			if (aThis.getAlias() != null) {
-				String alias = aThis.getAlias().getName();
-				aThis.setAlias(new Alias(transform(alias)));
-			}
 			if (aThis.getFromItem() != null) {
 				aThis.getFromItem().accept(this);
 			}
@@ -179,29 +136,6 @@ public abstract class NameTransformer {
 
 		public ExprVisitor() {
 			setSelectVisitor(vSelect);
-		}
-
-		@Override
-		public void visit(Column column) {
-			if (column.getTable() != null) {
-				column.getTable().accept(vFromItem);
-			}
-			String name = column.getColumnName();
-			column.setColumnName(transform(name));
-		}
-
-		@Override
-		public void visit(SubSelect subSelect) {
-			if (subSelect.getAlias() != null) {
-				String alias = subSelect.getAlias().getName();
-				subSelect.setAlias(new Alias(transform(alias)));
-			}
-			if (subSelect.getWithItemsList() != null) {
-				for (WithItem item : subSelect.getWithItemsList()) {
-					item.accept(vSelect);
-				}
-			}
-			subSelect.getSelectBody().accept(vSelect);
 		}
 
 	}
@@ -220,15 +154,6 @@ public abstract class NameTransformer {
 
 		@Override
 		public void visit(CreateView createView) {
-			String name = createView.getView().getName();
-			createView.getView().setName(transform(name));
-			if (createView.getColumnNames() != null) {
-				LinkedList<String> colNames = new LinkedList<>();
-				for (String col : createView.getColumnNames()) {
-					colNames.add(transform(col));
-				}
-				createView.setColumnNames(colNames);
-			}
 			createView.getSelect().accept(this);
 		}
 

@@ -12,7 +12,6 @@ import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import at.ac.tuwien.dbai.hgtools.util.GraphUtils;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.StringValue;

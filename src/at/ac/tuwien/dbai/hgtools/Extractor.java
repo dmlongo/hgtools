@@ -12,7 +12,7 @@ import at.ac.tuwien.dbai.hgtools.sql2hg.QueryExtractor.SubqueryEdge;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QueryGraphManipulator;
 import at.ac.tuwien.dbai.hgtools.sql2hg.QuerySimplifier;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
-import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
+import at.ac.tuwien.dbai.hgtools.sql2hg.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.util.SqlUtils;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import at.ac.tuwien.dbai.hgtools.util.Writables;

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import at.ac.tuwien.dbai.hgtools.util.Util;
@@ -27,7 +27,7 @@ import net.sf.jsqlparser.statement.select.WithItem;
 
 public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
-	private static enum ParsingState {
+	private enum ParsingState {
 		WAITING, READING_VIEW, READING_VIEW_SETOPLIST, IN_SELECT, FINISHED
 	}
 
@@ -44,8 +44,8 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 		String name;
 		LinkedList<String> attr;
-		public PredicateDefinition def;
-		public ViewPredicate pred;
+		PredicateDefinition def;
+		ViewPredicate pred;
 	}
 
 	private ViewInfo currentViewInfo;
@@ -58,8 +58,6 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	private HashSet<Equality> joins;
 
 	private PlainSelect tmpPS;
-
-	private LinkedList<ConjunctiveQuery> cqs;
 
 	public ConjunctiveQueryFinder(Schema schema) {
 		if (schema == null) {
@@ -78,26 +76,19 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 
 		tmpPS = null;
 
-		cqs = new LinkedList<>();
-
 		currentState = ParsingState.WAITING;
 	}
 
-	// TODO can be called only once, otherwise reset the state
 	public void run(Statement statement) {
 		statement.accept(this);
 	}
 
-	public HashSet<Predicate> getTables() {
+	public Set<Predicate> getTables() {
 		return tables;
 	}
 
-	public HashSet<Equality> getJoins() {
+	public Set<Equality> getJoins() {
 		return joins;
-	}
-
-	public List<ConjunctiveQuery> getConjunctiveQueries() {
-		return cqs;
 	}
 
 	// SelectVisitor
@@ -187,8 +178,9 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 		}
 
 		if (currentState == ParsingState.READING_VIEW) {
-			for (String viewAttr : viewAttrToCol.keySet()) {
-				Column col = viewAttrToCol.get(viewAttr);
+			for (Map.Entry<String, Column> entry : viewAttrToCol.entrySet()) {
+				String viewAttr = entry.getKey();
+				Column col = entry.getValue();
 				if (col != null) {
 					String defPred = nResolver.resolveColumn(col).getAlias();
 					String defAttr = col.getColumnName();
@@ -223,14 +215,14 @@ public class ConjunctiveQueryFinder extends QueryVisitorUnsupportedAdapter {
 	}
 
 	private ArrayList<Equality> findCommonColumns(Predicate p1, Predicate p2) {
-		ArrayList<Equality> joins = new ArrayList<>(p1.arity());
+		ArrayList<Equality> eqs = new ArrayList<>(p1.arity());
 		for (String attr : p1) {
 			if (p2.existsAttribute(attr)) {
 				Equality eq = new Equality(p1, attr, p2, attr);
-				joins.add(eq);
+				eqs.add(eq);
 			}
 		}
-		return joins;
+		return eqs;
 	}
 
 	private Column extractColumn(Expression expression) {

@@ -3,7 +3,6 @@ package at.ac.tuwien.dbai.hgtools.sql2hg;
 import java.util.HashSet;
 import java.util.Set;
 
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Column;
 

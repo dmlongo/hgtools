@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class SimplePredicate implements Predicate {
 
@@ -96,9 +97,9 @@ public class SimplePredicate implements Predicate {
 		if (!attrNames.contains(attr.toLowerCase())) {
 			return null;
 		}
-		Attribute alias = attrToAlias.get(new Attribute(attr));
-		if (alias != null) {
-			return alias.getName();
+		Attribute als = attrToAlias.get(new Attribute(attr));
+		if (als != null) {
+			return als.getName();
 		} else if (definition.existsAttribute(attr)) {
 			return attr;
 		}
@@ -124,8 +125,6 @@ public class SimplePredicate implements Predicate {
 	@Override
 	public boolean existsAttribute(String attr) {
 		return attrNames.contains(attr.toLowerCase());
-		// return definition.existsAttribute(attr) || aliasToAttr.containsKey(new
-		// Attribute(attr));
 	}
 
 	@Override
@@ -193,9 +192,11 @@ public class SimplePredicate implements Predicate {
 		int result = 1;
 		result = prime * result + alias.toLowerCase().hashCode();
 		result = prime * result + definition.hashCode();
-		for (Attribute attr : attrToAlias.keySet()) {
-			result = prime * result + attr.hashCode();
-			result = prime * result + attrToAlias.get(attr).hashCode();
+		for (Map.Entry<Attribute, Attribute> entry : attrToAlias.entrySet()) {
+			Attribute attrK = entry.getKey();
+			Attribute attrV = entry.getValue();
+			result = prime * result + attrK.hashCode();
+			result = prime * result + attrV.hashCode();
 		}
 		return result;
 	}
@@ -218,12 +219,14 @@ public class SimplePredicate implements Predicate {
 		if (!definition.equals(other.definition)) {
 			return false;
 		}
-		for (Attribute attr : attrToAlias.keySet()) {
-			Attribute otherAttrAlias = other.attrToAlias.get(attr);
+		for (Map.Entry<Attribute, Attribute> entry : attrToAlias.entrySet()) {
+			Attribute attrK = entry.getKey();
+			Attribute attrV = entry.getValue();
+			Attribute otherAttrAlias = other.attrToAlias.get(attrK);
 			if (otherAttrAlias == null) {
 				return false;
 			} else {
-				Attribute attrAlias = attrToAlias.get(attr);
+				Attribute attrAlias = attrV;
 				if (!attrAlias.equals(otherAttrAlias)) {
 					return false;
 				}
@@ -250,9 +253,11 @@ public class SimplePredicate implements Predicate {
 
 	public static void main(String[] args) {
 		final String leafName1 = "leaf1";
+		final String leafName2 = "leaf2";
+		final String leafName3 = "leaf3";
 		PredicateDefinition leaf1Def = new PredicateDefinition(leafName1, new String[] { "attr1", "attr2", "attr3" });
-		PredicateDefinition leaf2Def = new PredicateDefinition("leaf2", new String[] { "col1", "col2" });
-		PredicateDefinition leaf3Def = new PredicateDefinition("leaf3", new String[] { "id", "name", "surname" });
+		PredicateDefinition leaf2Def = new PredicateDefinition(leafName2, new String[] { "col1", "col2" });
+		PredicateDefinition leaf3Def = new PredicateDefinition(leafName3, new String[] { "id", "name", "surname" });
 
 		BasePredicate leaf1 = new BasePredicate(leaf1Def);
 		System.out.println(leaf1);
@@ -261,28 +266,37 @@ public class SimplePredicate implements Predicate {
 		BasePredicate leaf3 = new BasePredicate(leaf3Def);
 		System.out.println(leaf3);
 
-		PredicateDefinition view1Def = new PredicateDefinition("view1", new String[] { "alias1", "alias2", "alias3" });
+		final String viewName1 = "view1";
+		final String aliasName1 = "alias1";
+		final String aliasName2 = "alias2";
+		final String aliasName3 = "alias3";
+		PredicateDefinition view1Def = new PredicateDefinition(viewName1,
+				new String[] { aliasName1, aliasName2, aliasName3 });
 		ViewPredicate view1 = new ViewPredicate(view1Def);
 		view1.addDefiningPredicates(leaf2, leaf3);
-		view1.defineAttribute("alias1", "leaf2", "col2");
-		view1.defineAttribute("alias2", "leaf3", "name");
-		view1.defineAttribute("alias3", "leaf2", "col1");
+		view1.defineAttribute(aliasName1, leafName2, "col2");
+		view1.defineAttribute(aliasName2, leafName3, "name");
+		view1.defineAttribute(aliasName3, leafName2, "col1");
 		System.out.println(view1);
 
-		PredicateDefinition view2Def = new PredicateDefinition("view2", new String[] { "vAttr1", "vAttr2", "vAttr3" });
+		final String vAttrName1 = "vAttr1";
+		final String vAttrName2 = "vAttr2";
+		final String vAttrName3 = "vAttr3";
+		PredicateDefinition view2Def = new PredicateDefinition("view2",
+				new String[] { vAttrName1, vAttrName2, vAttrName3 });
 		ViewPredicate view2 = new ViewPredicate(view2Def);
 		view2.addDefiningPredicates(leaf1, view1);
-		view2.defineAttribute("vAttr1", leafName1, "attr2");
-		view2.defineAttribute("vAttr2", "view1", "alias2");
-		view2.defineAttribute("vAttr3", "view1", "alias1");
+		view2.defineAttribute(vAttrName1, leafName1, "attr2");
+		view2.defineAttribute(vAttrName2, viewName1, aliasName2);
+		view2.defineAttribute(vAttrName3, viewName1, aliasName1);
 		System.out.println(view2);
 
 		System.out.println();
 		System.out.println("Def of leaf3.surname: " + leaf3.getDefiningAttribute("surname"));
-		System.out.println("Def of view1.alias3: " + view1.getDefiningAttribute("alias3"));
-		System.out.println("Def of view2.vAttr1: " + view2.getDefiningAttribute("vAttr1"));
-		System.out.println("Def of view2.vAttr2: " + view2.getDefiningAttribute("vAttr2"));
-		System.out.println("Def of view2.vAttr3: " + view2.getDefiningAttribute("vAttr3"));
+		System.out.println("Def of view1.alias3: " + view1.getDefiningAttribute(aliasName3));
+		System.out.println("Def of view2.vAttr1: " + view2.getDefiningAttribute(vAttrName1));
+		System.out.println("Def of view2.vAttr2: " + view2.getDefiningAttribute(vAttrName2));
+		System.out.println("Def of view2.vAttr3: " + view2.getDefiningAttribute(vAttrName3));
 
 		PredicateDefinition p1Def = new PredicateDefinition("p1", new String[] { "a1", "a2", "a3" });
 		// PredicateDefinition p2Def = new PredicateDefinition("pred2", new String[] {
@@ -293,12 +307,13 @@ public class SimplePredicate implements Predicate {
 		// "a1", "a2", "a3" });
 
 		System.out.println();
+		final String mainAttrName = "mainAttr";
 		SimplePredicate p1 = new SimplePredicate(p1Def);
 		p1.setAlias("mainPred");
-		p1.setAttributeAlias("a1", "mainAttr");
-		System.out.println(p1.existsAttribute("mainAttr"));
+		p1.setAttributeAlias("a1", mainAttrName);
+		System.out.println(p1.existsAttribute(mainAttrName));
 		p1.getAttributeAlias("a1");
-		p1.getOriginalAttribute("mainAttr");
+		p1.getOriginalAttribute(mainAttrName);
 
 		// System.out.println(p1);
 	}

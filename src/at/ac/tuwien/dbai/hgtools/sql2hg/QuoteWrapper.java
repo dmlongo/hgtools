@@ -1,4 +1,4 @@
-package at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare;
+package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import at.ac.tuwien.dbai.hgtools.util.Util;
 

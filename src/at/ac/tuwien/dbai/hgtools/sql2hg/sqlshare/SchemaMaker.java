@@ -193,7 +193,7 @@ public class SchemaMaker {
 	private void classifyPredicates(LinkedList<Record> recs) {
 		for (Record r : recs) {
 			for (PredicateDefinition pred : r.pb.getPredicates()) {
-				LinkedList<PredicateDefinition> initialCandidates = schema.getPredicateDefinitions(pred.getName());
+				List<PredicateDefinition> initialCandidates = schema.getPredicateDefinitions(pred.getName());
 				if (initialCandidates != null) {
 					HashSet<PredicateDefinition> candidates = new HashSet<>(initialCandidates);
 					Iterator<PredicateDefinition> it = candidates.iterator();

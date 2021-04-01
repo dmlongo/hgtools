@@ -25,8 +25,12 @@ public class HypergraphFromXCSPHelper implements XCallbacks2 {
 	private Hypergraph hg = new Hypergraph();
 	private int iEdge = 0;
 
-	public HypergraphFromXCSPHelper(String filename) throws Exception {
-		loadInstance(filename);
+	public HypergraphFromXCSPHelper(String filename) throws XCSPLoadInstanceException {
+		try {
+			loadInstance(filename);
+		} catch (Exception e) {
+			throw new XCSPLoadInstanceException(e);
+		}
 	}
 
 	@Override

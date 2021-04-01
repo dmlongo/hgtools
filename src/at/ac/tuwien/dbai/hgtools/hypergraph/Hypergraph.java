@@ -51,7 +51,7 @@ public class Hypergraph implements Writable {
 
 	@Override
 	public List<String> toFile() {
-		List<String> out = new ArrayList<>(100);
+		List<String> out = new ArrayList<>(edges.size());
 		for (Iterator<Edge> it = edges.iterator(); it.hasNext();) {
 			String e = it.next().toString();
 			if (it.hasNext())
@@ -64,7 +64,7 @@ public class Hypergraph implements Writable {
 	}
 
 	public List<String> toPaceFile() {
-		List<String> out = new ArrayList<>(100);
+		List<String> out = new ArrayList<>(edges.size() + 1);
 		int n = cntVertices();
 		int m = cntEdges();
 		out.add("p htd " + n + " " + m + "\n");
@@ -76,8 +76,8 @@ public class Hypergraph implements Writable {
 			line.append(nextEdge++);
 			for (Iterator<String> it = e.getVertices().iterator(); it.hasNext();) {
 				String v = it.next();
-				if (!s2i.containsKey(v)) {
-					s2i.put(v, nextVertex++);
+				if (s2i.putIfAbsent(v, nextVertex) == null) {
+					nextVertex++;
 				}
 				int iV = s2i.get(v);
 				line.append(' ');
@@ -188,5 +188,5 @@ public class Hypergraph implements Writable {
 
 		return i - 1;
 	}
-	
+
 }

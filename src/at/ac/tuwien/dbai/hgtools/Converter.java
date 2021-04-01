@@ -2,26 +2,21 @@ package at.ac.tuwien.dbai.hgtools;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import at.ac.tuwien.dbai.hgtools.csp2hg.Constraints;
 import at.ac.tuwien.dbai.hgtools.csp2hg.Domains;
 import at.ac.tuwien.dbai.hgtools.csp2hg.HypergraphFromXCSPHelper;
+import at.ac.tuwien.dbai.hgtools.csp2hg.XCSPLoadInstanceException;
 import at.ac.tuwien.dbai.hgtools.hypergraph.Hypergraph;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ConjunctiveQueryFinder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Equality;
 import at.ac.tuwien.dbai.hgtools.sql2hg.HypergraphBuilder;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Predicate;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
+import at.ac.tuwien.dbai.hgtools.sql2hg.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.sql2hg.ViewPredicate;
-import at.ac.tuwien.dbai.hgtools.sql2hg.sqlshare.ToLowerCaseTransformer;
 import at.ac.tuwien.dbai.hgtools.util.SqlUtils;
 import at.ac.tuwien.dbai.hgtools.util.Writables;
 import net.sf.jsqlparser.JSQLParserException;
@@ -108,46 +103,22 @@ public class Converter {
         for (Equality join : hgFinder.getJoins()) {
             hgBuilder.buildJoin(join);
         }
-        Hypergraph h = hgBuilder.getHypergraph();
+        Hypergraph hg = hgBuilder.getHypergraph();
         Map<String, List<String>> map = hgBuilder.getVarToColMapping();
-        System.out.println(h);
+        System.out.println(hg);
 
-        String newFile = file.getAbsolutePath();
-        int startIdx = newFile.lastIndexOf(File.separator);
-        int endIdx = newFile.lastIndexOf('.');
-        String fileBaseName = newFile.substring(startIdx, endIdx);
-        newFile = outDir + File.separator + fileBaseName + ".hg";
-        String newFileMap = outDir + File.separator + fileBaseName + ".map";
-        Path newFilePath = Paths.get(newFile);
-        Path newFileMapPath = Paths.get(newFileMap);
-        Files.createDirectories(newFilePath.getParent());
-        if (!Files.exists(newFilePath))
-            Files.createFile(newFilePath);
-        if (!Files.exists(newFileMapPath))
-            Files.createFile(newFileMapPath);
-        Files.write(Paths.get(newFile), h.toFile(), StandardCharsets.UTF_8);
-        Files.write(Paths.get(newFileMap), toFile(map), StandardCharsets.UTF_8);
+        String hgFile = file.getAbsolutePath();
+        int startIdx = hgFile.lastIndexOf(File.separator);
+        int endIdx = hgFile.lastIndexOf('.');
+        String fileBaseName = hgFile.substring(startIdx, endIdx);
+        hgFile = outDir + File.separator + fileBaseName + ".hg";
+        Writables.writeToFile(hg, hgFile);
+
+        String mapFile = outDir + File.separator + fileBaseName + ".map";
+        Writables.writeToFile(map, mapFile);
     }
 
-    private static List<String> toFile(Map<String, List<String>> map) {
-        ArrayList<String> lines = new ArrayList<>(map.size());
-        for (Map.Entry<String, List<String>> entry : map.entrySet()) {
-            StringBuilder sb = new StringBuilder(100);
-            sb.append(entry.getKey());
-            sb.append('=');
-            Iterator<String> it = entry.getValue().iterator();
-            while (it.hasNext()) {
-                sb.append(it.next());
-                if (it.hasNext()) {
-                    sb.append(',');
-                }
-            }
-            lines.add(sb.toString());
-        }
-        return lines;
-    }
-
-    private static void convertXCSP(File file) throws Exception {
+    private static void convertXCSP(File file) throws XCSPLoadInstanceException, IOException {
         if (Main.verbose) {
             System.out.println("+ Converting: " + file.getPath());
             System.out.println("++ Read");

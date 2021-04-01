@@ -10,7 +10,7 @@ import at.ac.tuwien.dbai.hgtools.util.Util;
 public class PredicateDefinitionQuote extends PredicateDefinition {
 
 	public PredicateDefinitionQuote(String name, Collection<String> attributes) {
-		super(Util.addQuote(name), new LinkedList<String>());
+		super(Util.addQuote(name), new LinkedList<>());
 		int pos = 0;
 		for (String attrName : attributes) {
 			Attribute attr = new Attribute(Util.addQuote(attrName), pos++);

@@ -12,7 +12,6 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import at.ac.tuwien.dbai.hgtools.util.NameStack;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.expression.Alias;
@@ -289,9 +288,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 				subSelect.setAlias(new Alias(aliasName));
 
 				SelectBody curr = resolver.getCurrentSelect();
-				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
-				selectToViewMap.get(curr).add(aliasName);
-
+				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>()).add(aliasName);
 				table.accept(this);
 			} else {
 				resolver.addTableToCurrentScope((Table) fromItem);
@@ -319,9 +316,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 				subSelect.setAlias(new Alias(aliasName));
 
 				SelectBody curr = resolver.getCurrentSelect();
-				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
-				selectToViewMap.get(curr).add(aliasName);
-
+				selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>()).add(aliasName);
 				table.accept(this);
 			} else {
 				resolver.addTableToCurrentScope((Table) joinItem);
@@ -410,9 +405,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 			exprItem.setAlias(new Alias(aliasName));
 
 			SelectBody curr = resolver.getCurrentSelect();
-			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
-			selectToViewMap.get(curr).add(aliasName);
-
+			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>()).add(aliasName);
 			table.accept(this);
 		} else {
 			// item.getExpression().accept(exprVisitor);
@@ -461,8 +454,7 @@ public class QueryExtractor extends QueryVisitorNoExpressionAdapter {
 		String tableAlias = getTableAliasName(tableName);
 		if (nameToViewMap.containsKey(tableAlias)) {
 			SelectBody curr = resolver.getCurrentSelect();
-			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>());
-			selectToViewMap.get(curr).add(tableAlias);
+			selectToViewMap.computeIfAbsent(curr, k -> new LinkedList<>()).add(tableAlias);
 		}
 		resolver.addNameToCurrentScope(tableAlias);
 		PredicateDefinition pred = schema.getPredicateDefinition(tableName.getName());

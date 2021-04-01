@@ -204,7 +204,7 @@ public class Util {
 					if (keyToLowerCase) {
 						tab = tab.toLowerCase();
 					}
-					map.computeIfAbsent(tab, k -> new LinkedList<>());
+					map.putIfAbsent(tab, new LinkedList<>());
 					for (String tk : tks) {
 						String val = tk;
 						if (valueToLowerCase) {

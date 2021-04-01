@@ -43,21 +43,30 @@ public class Schema implements Iterable<PredicateDefinition> {
 		viewNames.add(predDef.getName());
 	}
 
-	// TODO this method (actually the whole class) has a static behavior
 	public Predicate newPredicate(String predName) {
-		// TODO exceptions could be raised
-		Predicate pred = stubs.get(definitions.get(predName.toLowerCase()));
+		PredicateDefinition def = definitions.get(predName.toLowerCase());
+		if (def == null) {
+			throw new UnknownPredicateException(predName);
+		}
+		Predicate pred = stubs.get(def);
 		if (pred instanceof BasePredicate) {
 			return new BasePredicate((BasePredicate) pred);
 		} else if (pred instanceof ViewPredicate) {
 			return new ViewPredicate((ViewPredicate) pred);
 		} else {
-			throw new RuntimeException("pred= " + pred);
+			throw new ClassCastException("pred= " + pred);
+		}
+	}
+
+	static class UnknownPredicateException extends RuntimeException {
+		private static final long serialVersionUID = -8543621380440711301L;
+
+		public UnknownPredicateException(String predName) {
+			super(predName + " is unknown.");
 		}
 	}
 
 	public PredicateDefinition getPredicateDefinition(String predDef) {
-		// TODO should I make sure I don't return null if pred doesn't exist?
 		return definitions.get(predDef.toLowerCase());
 	}
 
@@ -99,5 +108,5 @@ public class Schema implements Iterable<PredicateDefinition> {
 		}
 		return sb.toString();
 	}
-	
+
 }

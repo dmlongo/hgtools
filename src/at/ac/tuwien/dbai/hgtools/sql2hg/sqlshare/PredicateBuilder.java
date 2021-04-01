@@ -7,11 +7,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import at.ac.tuwien.dbai.hgtools.sql2hg.ExpressionVisitorAdapterFixed;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
-import at.ac.tuwien.dbai.hgtools.util.ExpressionVisitorAdapterFixed;
 import at.ac.tuwien.dbai.hgtools.util.Util;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -153,8 +154,9 @@ public class PredicateBuilder {
 			unknownColumns.clear();
 		}
 
-		for (String predName : partialDefs.keySet()) {
-			HashSet<String> attributes = partialDefs.get(predName);
+		for (Map.Entry<String, HashSet<String>> entry : partialDefs.entrySet()) {
+			String predName = entry.getKey();
+			HashSet<String> attributes = entry.getValue();
 			PredicateDefinition p = null;
 			if (quotes) {
 				p = new PredicateDefinitionQuote(predName, attributes);
@@ -349,9 +351,7 @@ public class PredicateBuilder {
 			tablesInTheFrom.add(alias);
 			String tableName = table.getName();
 			alias2def.put(alias, tableName);
-			if (!partialDefs.containsKey(tableName)) {
-				partialDefs.put(tableName, new HashSet<>());
-			}
+			partialDefs.putIfAbsent(tableName, new HashSet<>());
 		}
 
 		@Override

@@ -73,26 +73,31 @@ public class HypergraphBuilder {
 	}
 
 	public Hypergraph getHypergraph() {
-		// System.out.println(vars);
 		for (Edge e : h.getEdges()) {
 			for (String v : e.getVertices()) {
 				String newName = vars.find(v);
 				if (!v.equals(newName) && !e.renameVertex(v, newName)) {
-					throw new RuntimeException("Vertex " + newName + " already exists.");
+					throw new ExistingVertexException(newName);
 				}
 			}
 		}
 		return h;
 	}
 
+	static class ExistingVertexException extends RuntimeException {
+		private static final long serialVersionUID = -3927324731343631494L;
+
+		public ExistingVertexException(String name) {
+			super("Vertex " + name + " already exists.");
+		}
+	}
+
 	public Map<String, List<String>> getVarToColMapping() {
 		HashMap<String, List<String>> varToCol = new HashMap<>();
-		for (String col : colToVar.keySet()) {
-			String var = vars.find(colToVar.get(col));
-			if (!varToCol.containsKey(var)) {
-				varToCol.put(var, new LinkedList<>());
-			}
-			varToCol.get(var).add(col);
+		for (Map.Entry<String, String> entry : colToVar.entrySet()) {
+			String col = entry.getKey();
+			String var = vars.find(entry.getValue());
+			varToCol.computeIfAbsent(var, k -> new LinkedList<>()).add(col);
 		}
 		return varToCol;
 	}
