@@ -41,7 +41,7 @@ public class ElementCtr implements Constraint {
         out.add(Writables.stringify(getVariables(), ' '));
         out.add(Writables.stringify(list, ' '));
         out.add(Integer.toString(startIndex));
-        out.add(index);
+        out.add(Writables.stringify(index));
         out.add(rank.toString());
         long k = ((ConditionVal) condition).k; // TODO ok only for miniTrack17
         out.add(Long.toString(k));
