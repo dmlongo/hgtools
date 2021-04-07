@@ -55,4 +55,9 @@ public class ElementCtr implements Constraint {
         return vars;
     }
 
+    @Override
+    public String getType() {
+        return "ElementCtr";
+    }
+
 }

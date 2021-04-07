@@ -59,4 +59,10 @@ public class ExtensionCtr implements Constraint {
         return Collections.unmodifiableList(vars);
     }
 
+    @Override
+    public String getType() {
+        String suff = supports ? "supports" : "conflicts";
+        return "ExtensionCtr_" + suff;
+    }
+
 }

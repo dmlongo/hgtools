@@ -57,4 +57,9 @@ public class SumCtr implements Constraint {
         return Collections.unmodifiableList(vars);
     }
 
+    @Override
+    public String getType() {
+        return "SumCtr";
+    }
+
 }

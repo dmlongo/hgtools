@@ -6,6 +6,7 @@ public class Main {
 	static final String CONVERT = "-convert";
 	static final String EXTRACT = "-extract";
 	static final String TRANSLATE = "-translate";
+	static final String CLASSIFY = "-classify";
 
 	static final String SQL = "-sql";
 	static final String XCSP = "-xcsp";
@@ -42,6 +43,12 @@ public class Main {
 				throw new UnsupportedCommandException(type);
 			}
 			MainTranslate.main(type, args, 2);
+			break;
+		case CLASSIFY:
+			if (!type.equals(XCSP)) {
+				throw new UnsupportedCommandException(type);
+			}
+			Classifier.classify(type, args, 2);
 			break;
 		default:
 			throw new UnsupportedCommandException(action);

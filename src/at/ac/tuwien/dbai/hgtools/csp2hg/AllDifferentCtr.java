@@ -36,4 +36,9 @@ public class AllDifferentCtr implements Constraint {
         return Collections.unmodifiableList(vars);
     }
 
+    @Override
+    public String getType() {
+        return "AllDifferentCtr";
+    }
+
 }

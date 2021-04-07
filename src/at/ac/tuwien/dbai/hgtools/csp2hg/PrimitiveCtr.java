@@ -80,27 +80,27 @@ public class PrimitiveCtr implements Constraint {
         String yy = (y == null) ? null : Writables.stringify(y);
         String zz = (z == null) ? null : Writables.stringify(z);
         switch (myType) {
-            case UNARY:
-                out.add(xx);
-                c = op.toString().toLowerCase() + "(" + xx + "," + k + ")";
-                break;
-            case BINARY_XYK:
-                out.add(xx + " " + yy);
-                sub = aop.toString().toLowerCase() + "(" + xx + "," + yy + ")";
-                c = op.toString().toLowerCase() + "(" + sub + "," + k + ")";
-                break;
-            case TERNARY:
-                out.add(xx + " " + yy + " " + zz);
-                sub = aop.toString().toLowerCase() + "(" + xx + "," + yy + ")";
-                c = op.toString().toLowerCase() + "(" + sub + "," + zz + ")";
-                break;
-            case BINARY_XPY:
-                out.add(xx + " " + yy);
-                sub = aop.toString().toLowerCase() + "(" + xx + "," + p + ")";
-                c = op.toString().toLowerCase() + "(" + sub + "," + yy + ")";
-                break;
-            default:
-                throw new RuntimeException("Unknown case: " + myType);
+        case UNARY:
+            out.add(xx);
+            c = op.toString().toLowerCase() + "(" + xx + "," + k + ")";
+            break;
+        case BINARY_XYK:
+            out.add(xx + " " + yy);
+            sub = aop.toString().toLowerCase() + "(" + xx + "," + yy + ")";
+            c = op.toString().toLowerCase() + "(" + sub + "," + k + ")";
+            break;
+        case TERNARY:
+            out.add(xx + " " + yy + " " + zz);
+            sub = aop.toString().toLowerCase() + "(" + xx + "," + yy + ")";
+            c = op.toString().toLowerCase() + "(" + sub + "," + zz + ")";
+            break;
+        case BINARY_XPY:
+            out.add(xx + " " + yy);
+            sub = aop.toString().toLowerCase() + "(" + xx + "," + p + ")";
+            c = op.toString().toLowerCase() + "(" + sub + "," + yy + ")";
+            break;
+        default:
+            throw new RuntimeException("Unknown case: " + myType);
         }
         out.add(c);
         return out;
@@ -119,6 +119,11 @@ public class PrimitiveCtr implements Constraint {
             vars.add(z);
         }
         return vars;
+    }
+
+    @Override
+    public String getType() {
+        return "PrimitiveCtr";
     }
 
 }
