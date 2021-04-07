@@ -35,14 +35,15 @@ public class ElementCtr implements Constraint {
 
     @Override
     public List<String> toFile() {
-        ArrayList<String> out = new ArrayList<>(7);
+        ArrayList<String> out = new ArrayList<>(8);
         out.add("ElementCtr");
         out.add(name);
+        out.add(Writables.stringify(getVariables(), ' '));
         out.add(Writables.stringify(list, ' '));
         out.add(Integer.toString(startIndex));
         out.add(index);
         out.add(rank.toString());
-        long k = ((ConditionVal) condition).k; // ok only for XCSP-core
+        long k = ((ConditionVal) condition).k; // TODO ok only for miniTrack17
         out.add(Long.toString(k));
         return out;
     }
