@@ -9,6 +9,15 @@ import java.util.List;
 import at.ac.tuwien.dbai.hgtools.sql2hg.PredicateDefinition;
 import at.ac.tuwien.dbai.hgtools.sql2hg.Schema;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.DateValue;
+import net.sf.jsqlparser.expression.DoubleValue;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.HexValue;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.TimeValue;
+import net.sf.jsqlparser.expression.TimestampValue;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
@@ -79,6 +88,12 @@ public class SqlUtils {
 
     public static boolean isSQLFile(String filename) {
     	return filename.endsWith("sql") || filename.endsWith("tpl");
+    }
+
+    public static boolean isConstantValue(Expression expr) {
+    	return expr instanceof DateValue || expr instanceof DoubleValue || expr instanceof HexValue
+    			|| expr instanceof LongValue || expr instanceof NullValue || expr instanceof StringValue
+    			|| expr instanceof TimestampValue || expr instanceof TimeValue;
     }
 
 }

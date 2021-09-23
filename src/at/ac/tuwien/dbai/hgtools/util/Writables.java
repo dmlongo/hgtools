@@ -98,4 +98,14 @@ public class Writables {
         }, filename);
     }
 
+    public static void writeToFile(Collection<String> elems, String filename) throws IOException {
+        writeToFile(() -> {
+            ArrayList<String> lines = new ArrayList<>(elems.size());
+            for (String el : elems) {
+                lines.add(el);
+            }
+            return lines;
+        }, filename);
+    }
+
 }

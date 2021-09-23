@@ -102,4 +102,8 @@ public class HypergraphBuilder {
 		return varToCol;
 	}
 
+	public Map<String, String> getColToVarMapping() {
+		return colToVar;
+	}
+
 }
