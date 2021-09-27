@@ -1,6 +1,7 @@
 package at.ac.tuwien.dbai.hgtools.sql2hg;
 
 import at.ac.tuwien.dbai.hgtools.util.SqlUtils;
+import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.schema.Column;
@@ -16,6 +17,13 @@ public enum ClauseType {
 			return COLUMN_OP_COLUMN;
 		} else if (left instanceof Column && SqlUtils.isConstantValue(right)) {
 			return COLUMN_OP_CONSTANT;
+		} else if (left instanceof Column && right instanceof CastExpression) {
+			CastExpression cast = (CastExpression) right;
+			if (SqlUtils.isConstantValue(cast.getLeftExpression())) {
+				return COLUMN_OP_CONSTANT;
+			} else {
+				return OTHER;
+			}
 		} else if (left instanceof Column && right instanceof SubSelect) {
 			return COLUMN_OP_SUBSELECT;
 		} else {
