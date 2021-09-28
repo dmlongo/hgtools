@@ -125,8 +125,9 @@ public class ConvEval {
             String[] tks = colFilt.split(";");
             for (int i = 0; i < tks.length - 1; i++) {
                 String modCol = tks[i].replace('.', '_');
-                res.add(colFilt.replace(tks[i], colToVar.get(modCol)));
+                colFilt = colFilt.replace(tks[i], colToVar.get(modCol));
             }
+            res.add(colFilt);
         }
         return res;
     }
@@ -139,8 +140,9 @@ public class ConvEval {
                 String sel = tks[tks.length - 1];
                 for (int i = 0; i < tks.length - 1; i++) {
                     String modCol = tks[i].replace('.', '_');
-                    res.add(sel.replace(tks[i], colToVar.get(modCol)));
+                    sel = sel.replace(tks[i], colToVar.get(modCol));
                 }
+                res.add(sel);
             } else {
                 res.add(colSel);
             }
